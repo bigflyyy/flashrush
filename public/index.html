@@ -486,6 +486,8 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     </div>
     <!-- Queue -->
     <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#888;text-transform:uppercase;padding:6px 14px 5px">Nearby Parcel Jobs</div>
+    <div id="dph1-jobs"></div>
+    <div id="dph1-jobs-sample">
     <div style="background:white;margin:0 12px 6px;border-radius:12px;border:1px solid rgba(0,0,0,.06);padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openReq()">
       <div style="width:38px;height:38px;border-radius:11px;background:#f6f6f6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-package" style="font-size:18px;color:#333"></i></div>
       <div style="flex:1">
@@ -519,6 +521,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="font-size:10px;color:#FAC775">Long route</div>
       </div>
     </div>
+    </div><!-- /dph1-jobs-sample -->
     <div style="height:8px"></div>
   </div>
   <div class="btm-nav">
@@ -1137,6 +1140,8 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#000">My Deliveries</div>
   </div>
   <div style="overflow-y:auto;flex:1">
+    <div id="cph3-live"></div>
+    <div id="cph3-sample">
     <!-- Active -->
     <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:10px 14px 6px">Active</div>
     <div style="background:white;margin:0 12px 8px;border-radius:14px;border:2px solid #06C167;overflow:hidden;flex-shrink:0">
@@ -1217,6 +1222,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       </div>
     </div>
     <div style="height:8px"></div>
+    </div><!-- /cph3-sample -->
   </div>
   <div class="btm-nav">
     <div class="ni" onclick="custNav('cph1',this)"><i class="ti ti-home"></i><span class="nl">Home</span></div>
@@ -1522,6 +1528,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       <div style="font-size:9px;color:#444;text-transform:uppercase;width:56px;text-align:right;flex-shrink:0">Status</div>
       <div style="font-size:9px;color:#444;text-transform:uppercase;width:38px;text-align:right;flex-shrink:0">Amt</div>
     </div>
+    <div id="adm-live-rows"></div>
     <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #1a1d27">
       <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:#444;width:46px;flex-shrink:0">#4821</div>
       <div style="font-size:11px;color:white;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Small parcel → Daniel R.</div>
@@ -2437,6 +2444,135 @@ async function bookDelivery(){
 
 // Compute an initial quote once the client is ready.
 setTimeout(() => { if (hasClient()) updateQuote(); }, 300);
+
+// ===== LIVE LISTS: load real data into screens =====
+const STATUS_LABEL = {
+  pending:'Pending', accepted:'Accepted', picked_up:'Picked up',
+  delivering:'Delivering', delivered:'Delivered', cancelled:'Cancelled'
+};
+const SIZE_LABEL = { small:'Small parcel', medium:'Medium parcel', large:'Large parcel', xl:'XL parcel' };
+function shortAddr(a){ return (a||'').split(',')[0]; }
+
+// --- Customer: My Deliveries ---
+async function loadMyDeliveries(){
+  if (!hasClient() || !FlashRush.token) return;
+  const live = document.getElementById('cph3-live');
+  const sample = document.getElementById('cph3-sample');
+  if (!live) return;
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    if (sample) sample.style.display = 'none';
+    if (!deliveries.length){
+      live.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#999;font-size:13px">No deliveries yet.<br>Tap "Send a parcel" to book your first one.</div>';
+      return;
+    }
+    const active = deliveries.filter(d => d.status !== 'delivered' && d.status !== 'cancelled');
+    const past = deliveries.filter(d => d.status === 'delivered' || d.status === 'cancelled');
+    let html = '';
+    if (active.length){
+      html += '<div style="font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:10px 14px 6px">Active</div>';
+      for (const d of active){
+        html += '<div style="background:white;margin:0 12px 8px;border-radius:14px;border:2px solid #06C167;overflow:hidden">'
+          + '<div style="background:rgba(6,193,103,.05);padding:12px 14px;border-bottom:1px solid rgba(6,193,103,.15)">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+          + '<div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px">Parcel #'+d.id+'</div>'
+          + '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:#000;margin-top:2px">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+(d.recipient_name||'Recipient')+'</div></div>'
+          + '<div style="background:#06C167;border-radius:999px;padding:3px 9px;font-size:9px;font-weight:700;color:white">'+STATUS_LABEL[d.status].toUpperCase()+'</div></div>'
+          + '<div style="font-size:12px;color:#555;margin-top:4px">'+shortAddr(d.pickup_address)+' → '+shortAddr(d.dropoff_address)+' · '+d.miles+' mi · $'+d.total.toFixed(2)+'</div></div>'
+          + '<div style="padding:10px 14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'
+          + '<button onclick="trackDelivery('+d.id+')" style="background:#f5f5f5;border:none;border-radius:9px;padding:8px;font-size:12px;font-weight:500;cursor:pointer">Track</button>'
+          + '<button style="background:#f5f5f5;border:none;border-radius:9px;padding:8px;font-size:12px;font-weight:500;cursor:pointer">Contact</button>'
+          + '</div></div></div>';
+      }
+    }
+    if (past.length){
+      html += '<div style="font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:6px 14px 6px">Past Deliveries</div>';
+      for (const d of past){
+        html += '<div style="background:white;margin:0 12px 6px;border-radius:14px;border:1px solid rgba(0,0,0,.06);padding:12px 14px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+          + '<div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#000">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+(d.recipient_name||'Recipient')+'</div>'
+          + '<div style="font-size:11px;color:#888;margin-top:2px">'+shortAddr(d.dropoff_address)+' · $'+d.total.toFixed(2)+' · '+STATUS_LABEL[d.status]+'</div></div>'
+          + (d.rating?'<div style="font-size:12px;color:#FAC775">'+'★'.repeat(d.rating)+'</div>':'')
+          + '</div></div>';
+      }
+    }
+    live.innerHTML = html;
+  } catch(e){ /* not logged in or network issue: leave sample visible */ }
+}
+
+function trackDelivery(id){ alert('Live tracking for parcel #'+id+' — real-time map coming in the next step.'); }
+
+// --- Admin: live orders ---
+async function loadAdminOrders(){
+  if (!hasClient() || !FlashRush.token) return;
+  const tbody = document.getElementById('adm-live-rows');
+  if (!tbody) return;
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const rows = deliveries.slice(0, 12).map(d => {
+      const statusColors = { pending:'#FAC775', delivering:'#06C167', accepted:'#06C167', picked_up:'#06C167', delivered:'#888', cancelled:'#e24b4a' };
+      const c = statusColors[d.status] || '#888';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid #12141c">'
+        + '<div style="font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:#444;width:46px;flex-shrink:0">#'+d.id+'</div>'
+        + '<div style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+shortAddr(d.pickup_address)+' → '+(d.recipient_name||shortAddr(d.dropoff_address))+'</div>'
+        + '<div style="font-size:10px;font-weight:600;color:'+c+';width:62px;text-align:center;flex-shrink:0">'+STATUS_LABEL[d.status]+'</div>'
+        + '<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:#fff;width:54px;text-align:right;flex-shrink:0">$'+d.total.toFixed(2)+'</div></div>';
+    }).join('');
+    tbody.innerHTML = rows || '<div style="padding:20px;text-align:center;color:#555;font-size:12px">No deliveries yet</div>';
+    // Hide the static sample rows that follow the live container.
+    let sib = tbody.nextElementSibling;
+    while (sib){ sib.style.display = 'none'; sib = sib.nextElementSibling; }
+  } catch(e){ /* leave sample */ }
+}
+
+// --- Driver: pending job queue ---
+async function loadDriverJobs(){
+  if (!hasClient() || !FlashRush.token) return;
+  const box = document.getElementById('dph1-jobs');
+  if (!box) return;
+  const sample = document.getElementById('dph1-jobs-sample');
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const pending = deliveries.filter(d => d.status === 'pending');
+    if (sample) sample.style.display = 'none';
+    if (!pending.length){
+      box.innerHTML = '<div style="padding:20px 14px;text-align:center;color:#999;font-size:12px">No pending jobs right now.</div>';
+      return;
+    }
+    box.innerHTML = pending.map(d => {
+      const icon = d.parcel_size==='small'||d.parcel_size==='medium' ? 'package' : (d.parcel_size==='xl'||d.parcel_size==='large'?'box':'mail');
+      return '<div style="background:white;margin:0 12px 6px;border-radius:12px;border:1px solid rgba(0,0,0,.06);padding:11px 14px;display:flex;align-items:center;gap:10px">'
+        + '<div style="width:38px;height:38px;border-radius:11px;background:#f6f6f6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-'+icon+'" style="font-size:18px;color:#333"></i></div>'
+        + '<div style="flex:1"><div style="font-size:13px;font-weight:500;color:#000">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+shortAddr(d.dropoff_address)+'</div>'
+        + '<div style="font-size:11px;color:#888;margin-top:1px">'+d.miles+'mi · pickup '+shortAddr(d.pickup_address)+'</div></div>'
+        + '<div style="text-align:right"><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:#000">$'+d.total.toFixed(2)+'</div>'
+        + '<button onclick="acceptJob('+d.id+')" style="background:#06C167;color:white;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:3px">Accept</button></div></div>';
+    }).join('');
+  } catch(e){ /* leave sample */ }
+}
+
+async function acceptJob(id){
+  if (!hasClient() || !FlashRush.token){ alert('Sign in as a driver to accept jobs.'); openLogin(); return; }
+  try {
+    await FlashRush.accept(id);
+    alert('Job #'+id+' accepted! It is now assigned to you.');
+    loadDriverJobs();
+  } catch(e){ alert('Could not accept: '+(e.message||'error')); }
+}
+
+// Refresh lists when switching apps / after login.
+const _origSwitchApp = switchApp;
+switchApp = function(id){
+  _origSwitchApp(id);
+  if (id === 'c') loadMyDeliveries();
+  if (id === 'a') loadAdminOrders();
+  if (id === 'd') loadDriverJobs();
+};
+const _origRefreshAuthBar = refreshAuthBar;
+refreshAuthBar = function(user){
+  _origRefreshAuthBar(user);
+  if (user){ loadMyDeliveries(); loadAdminOrders(); loadDriverJobs(); }
+};
 
 </script>
 </body>
