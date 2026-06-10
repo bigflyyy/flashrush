@@ -354,6 +354,32 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
 </head>
 <body>
 
+<!-- ===== LOGIN MODAL (wired to live backend) ===== -->
+<div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:18px;width:100%;max-width:360px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">Flash<span style="color:#06C167">Rush</span></div>
+    <div id="login-sub" style="font-size:13px;color:#888;text-align:center;margin-bottom:20px">Sign in to your account</div>
+    <input id="login-email" type="email" placeholder="Email" value="alex@flashrush.app" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+    <input id="login-password" type="password" placeholder="Password" value="password123" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
+    <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px;text-align:center"></div>
+    <button id="login-btn" onclick="doLogin()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px">Sign In</button>
+    <div style="font-size:11px;color:#aaa;text-align:center;margin-top:14px;line-height:1.6">
+      Demo logins:<br>
+      alex@flashrush.app · marcus@flashrush.app<br>
+      sarah@flashrush.app (admin123) — rest use password123
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <span onclick="closeLogin()" style="font-size:12px;color:#888;cursor:pointer;text-decoration:underline">Browse without signing in</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AUTH STATUS BAR ===== -->
+<div id="auth-bar" style="text-align:center;padding:8px;font-size:13px;font-family:'DM Sans',sans-serif">
+  <span id="auth-status">Not signed in</span>
+  <button id="auth-action" onclick="openLogin()" style="margin-left:8px;background:#06C167;color:white;border:none;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">Sign In</button>
+</div>
+
 <div class="platform-header">
   <div class="platform-title">Flash<span>Rush</span> Platform</div>
   <div class="platform-sub">Driver App · Customer App · Admin Dashboard — all sections, fully detailed</div>
@@ -876,7 +902,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-headset" style="font-size:16px;color:#888"></i><span style="font-size:12px;color:#000">Support</span></div>
         <i class="ti ti-chevron-right" style="font-size:14px;color:#ccc"></i>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer">
+      <div onclick="doLogout()" style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-logout" style="font-size:16px;color:#e24b4a"></i><span style="font-size:12px;color:#e24b4a">Sign Out</span></div>
         <i class="ti ti-chevron-right" style="font-size:14px;color:#ccc"></i>
       </div>
@@ -1373,7 +1399,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-message-circle" style="font-size:16px;color:#888"></i><span style="font-size:12px;color:#000">Live Chat</span></div>
         <div style="background:#06C167;color:white;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px">Online</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;cursor:pointer">
+      <div onclick="doLogout()" style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;cursor:pointer">
         <div style="display:flex;align-items:center;gap:8px"><i class="ti ti-logout" style="font-size:16px;color:#e24b4a"></i><span style="font-size:12px;color:#e24b4a">Sign Out</span></div>
         <i class="ti ti-chevron-right" style="font-size:14px;color:#ccc"></i>
       </div>
@@ -2260,5 +2286,69 @@ function showAdmin(sectionId, el){
 }
 </script>
 <script src="/api-client.js"></script>
+<script>
+// ===== AUTH WIRING (talks to live backend via FlashRush client) =====
+function hasClient(){ return typeof FlashRush !== 'undefined'; }
+
+function openLogin(){
+  if(!hasClient()){ alert('Connection to server unavailable. Please reload the page.'); return; }
+  document.getElementById('login-modal').style.display='flex';
+}
+function closeLogin(){ document.getElementById('login-modal').style.display='none'; }
+
+async function doLogin(){
+  if(!hasClient()) return;
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errEl.style.display='none';
+  btn.textContent='Signing in...'; btn.disabled=true;
+  try {
+    const { user } = await FlashRush.login(email, pw);
+    closeLogin();
+    refreshAuthBar(user);
+  } catch(e){
+    errEl.textContent = e.message || 'Login failed';
+    errEl.style.display='block';
+  } finally {
+    btn.textContent='Sign In'; btn.disabled=false;
+  }
+}
+
+function doLogout(){
+  if(hasClient()) FlashRush.logout();
+  refreshAuthBar(null);
+}
+
+function refreshAuthBar(user){
+  const status = document.getElementById('auth-status');
+  const action = document.getElementById('auth-action');
+  if (user){
+    status.innerHTML = 'Signed in as <strong>'+user.name+'</strong> ('+user.role+')';
+    action.textContent = 'Sign Out';
+    action.onclick = doLogout;
+    action.style.background = '#e24b4a';
+  } else {
+    status.textContent = 'Not signed in';
+    action.textContent = 'Sign In';
+    action.onclick = openLogin;
+    action.style.background = '#06C167';
+  }
+}
+
+// On page load, check if we already have a valid session.
+(async function initAuth(){
+  if (!hasClient()){ refreshAuthBar(null); return; }
+  if (FlashRush.token){
+    try {
+      const { user } = await FlashRush.me();
+      refreshAuthBar(user);
+      return;
+    } catch { FlashRush.logout(); }
+  }
+  refreshAuthBar(null);
+})();
+</script>
 </body>
 </html>
