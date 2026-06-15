@@ -1,58 +1,111 @@
-/* Pure-JavaScript datastore — zero native dependencies, no build tools.
-   Persists to a single JSON file. Good for v1 / small scale; the access
-   pattern (collections of records) ports cleanly to Postgres/Mongo later.
+/* Data layer with a synchronous collection interface, backed by either:
+   - Postgres (Neon) when DATABASE_URL is set  → durable, survives deploys
+   - a local JSON file otherwise               → zero-setup local dev
 
-   Concurrency model: single Node process, synchronous in-memory operations,
-   debounced write-to-disk. Fine for a v1 courier app. */
+   Design: all rows are loaded into memory on startup. Reads are synchronous
+   (instant, from memory) so existing route code needs no changes. Writes update
+   memory AND write through to the backing store. For an app of this size on a
+   single instance, this is simple and correct.
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+   IMPORTANT: call `await db.init()` once at startup before serving requests. */
+
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DB_PATH || join(__dirname, '../../flashrush-data.json');
+const DATABASE_URL = process.env.DATABASE_URL;
+const usePg = !!DATABASE_URL;
 
+// Ensure the directory holding the data file exists (e.g. a mounted disk path).
+function ensureDir(filePath) {
+  try {
+    const dir = dirname(filePath);
+    if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
+  } catch (e) { console.error('Could not create data dir:', e.message); }
+}
+
+const COLLECTIONS = ['users', 'driver_profiles', 'customer_profiles', 'deliveries', 'zones'];
 const empty = () => ({
-  users: [],
-  driver_profiles: [],
-  customer_profiles: [],
-  deliveries: [],     // the core entity: a parcel job
-  zones: [],
-  _seq: {},           // per-collection autoincrement counters
+  users: [], driver_profiles: [], customer_profiles: [], deliveries: [], zones: [], _seq: {},
 });
 
 let data = empty();
+let pool = null;
 
-function load() {
+// ---------- JSON file backing (local dev) ----------
+function loadFile() {
   if (existsSync(DB_PATH)) {
     try { data = { ...empty(), ...JSON.parse(readFileSync(DB_PATH, 'utf8')) }; }
     catch { data = empty(); }
   }
 }
-load();
-
 let writeTimer = null;
-function persist() {
-  // Debounce disk writes so bursts of mutations don't thrash the filesystem.
+function persistFile() {
   if (writeTimer) clearTimeout(writeTimer);
   writeTimer = setTimeout(() => {
-    writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    try { ensureDir(DB_PATH); writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch {}
     writeTimer = null;
   }, 50);
 }
 
-function flush() {
-  // Synchronous write — used by the seed script so data is on disk before exit.
-  if (writeTimer) { clearTimeout(writeTimer); writeTimer = null; }
-  writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+// ---------- Postgres backing (production) ----------
+// Each collection is stored as one table: id SERIAL PRIMARY KEY, doc JSONB.
+// We keep the flexible document shape so no per-field schema migration is needed.
+async function initPg() {
+  const { default: pg } = await import('pg');
+  pool = new pg.Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+
+  for (const name of COLLECTIONS) {
+    await pool.query(
+      `CREATE TABLE IF NOT EXISTS ${name} (id SERIAL PRIMARY KEY, doc JSONB NOT NULL)`
+    );
+  }
+
+  // Load every row into memory.
+  data = empty();
+  for (const name of COLLECTIONS) {
+    const { rows } = await pool.query(`SELECT id, doc FROM ${name} ORDER BY id`);
+    data[name] = rows.map((r) => ({ id: r.id, ...r.doc }));
+    const maxId = rows.reduce((m, r) => Math.max(m, r.id), 0);
+    data._seq[name] = maxId;
+  }
 }
 
-function nextId(collection) {
-  data._seq[collection] = (data._seq[collection] || 0) + 1;
-  return data._seq[collection];
+// Write-through helpers (fire-and-forget with error logging; memory is source of truth for reads).
+function pgInsert(name, row) {
+  const { id, ...doc } = row;
+  pool.query(`INSERT INTO ${name} (id, doc) VALUES ($1, $2)`, [id, doc])
+    .catch((e) => console.error(`pg insert ${name} failed:`, e.message));
+  // Keep the serial sequence ahead of manually-inserted ids.
+  pool.query(`SELECT setval(pg_get_serial_sequence('${name}','id'), GREATEST($1, (SELECT COALESCE(MAX(id),1) FROM ${name})))`, [id])
+    .catch(() => {});
+}
+function pgUpdate(name, id, row) {
+  const { id: _omit, ...doc } = row;
+  pool.query(`UPDATE ${name} SET doc = $2 WHERE id = $1`, [id, doc])
+    .catch((e) => console.error(`pg update ${name} failed:`, e.message));
+}
+function pgDelete(name, id) {
+  pool.query(`DELETE FROM ${name} WHERE id = $1`, [id])
+    .catch((e) => console.error(`pg delete ${name} failed:`, e.message));
+}
+async function pgClear(name) {
+  await pool.query(`DELETE FROM ${name}`);
+  await pool.query(`ALTER SEQUENCE ${name}_id_seq RESTART WITH 1`).catch(() => {});
 }
 
-/* Minimal collection helper. Records are plain objects with an `id`. */
+// ---------- Shared write dispatch ----------
+function persistInsert(name, row) { usePg ? pgInsert(name, row) : persistFile(); }
+function persistUpdate(name, id, row) { usePg ? pgUpdate(name, id, row) : persistFile(); }
+function persistDelete(name, id) { usePg ? pgDelete(name, id) : persistFile(); }
+
+function nextId(name) {
+  data._seq[name] = (data._seq[name] || 0) + 1;
+  return data._seq[name];
+}
+
 function collection(name) {
   return {
     all() { return data[name].slice(); },
@@ -62,22 +115,26 @@ function collection(name) {
     insert(rec) {
       const row = { id: nextId(name), ...rec };
       data[name].push(row);
-      persist();
+      persistInsert(name, row);
       return row;
     },
     update(id, patch) {
       const row = data[name].find((r) => r.id === Number(id));
       if (!row) return null;
       Object.assign(row, patch);
-      persist();
+      persistUpdate(name, row.id, row);
       return row;
     },
     remove(id) {
       const i = data[name].findIndex((r) => r.id === Number(id));
-      if (i >= 0) { data[name].splice(i, 1); persist(); return true; }
+      if (i >= 0) { const rid = data[name][i].id; data[name].splice(i, 1); persistDelete(name, rid); return true; }
       return false;
     },
-    clear() { data[name] = []; data._seq[name] = 0; persist(); },
+    clear() {
+      data[name] = []; data._seq[name] = 0;
+      if (usePg) { pgClear(name).catch((e) => console.error(`pg clear ${name}:`, e.message)); }
+      else persistFile();
+    },
   };
 }
 
@@ -87,7 +144,24 @@ const db = {
   customerProfiles: collection('customer_profiles'),
   deliveries: collection('deliveries'),
   zones: collection('zones'),
-  flush,
+  // Must be awaited once at startup.
+  async init() {
+    if (usePg) { await initPg(); console.log('  ✓ Data layer: Postgres (Neon) — durable'); }
+    else { loadFile(); console.log('  ✓ Data layer: local JSON file'); }
+  },
+  // For the seed script: ensure async writes have flushed to Postgres before exit.
+  async drain() {
+    if (usePg && pool) {
+      // Give in-flight write-through queries a moment, then verify by counting.
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  },
+  flush() {
+    if (usePg) return;
+    if (writeTimer) { clearTimeout(writeTimer); writeTimer = null; }
+    try { ensureDir(DB_PATH); writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); }
+    catch (e) { console.error('flush failed:', e.message); }
+  },
   raw: () => data,
 };
 

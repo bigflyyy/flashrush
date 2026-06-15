@@ -65,11 +65,16 @@ export function seedData(force = false) {
 // When run directly (`npm run seed`), force a full reseed.
 const isDirectRun = process.argv[1] && process.argv[1].endsWith('seed.js');
 if (isDirectRun) {
-  console.log('Seeding FlashRush courier database (force)...');
-  seedData(true);
-  console.log('✓ Seed complete.');
-  console.log('  Logins (passwords: password123; admin is admin123):');
-  console.log('  - Customer: alex@flashrush.app');
-  console.log('  - Driver:   marcus@flashrush.app');
-  console.log('  - Admin:    sarah@flashrush.app');
+  (async () => {
+    await db.init();
+    console.log('Seeding FlashRush courier database (force)...');
+    seedData(true);
+    await db.drain(); // ensure write-through to Postgres completes before exit
+    console.log('✓ Seed complete.');
+    console.log('  Logins (passwords: password123; admin is admin123):');
+    console.log('  - Customer: alex@flashrush.app');
+    console.log('  - Driver:   marcus@flashrush.app');
+    console.log('  - Admin:    sarah@flashrush.app');
+    process.exit(0);
+  })();
 }

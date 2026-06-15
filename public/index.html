@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FlashRush Platform</title>
+
+<!-- PWA / installable app -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#06C167">
+<!-- iOS: enables "Add to Home Screen" full-screen app behavior -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FlashRush">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
@@ -372,6 +381,13 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       <span onclick="closeLogin()" style="font-size:12px;color:#888;cursor:pointer;text-decoration:underline">Browse without signing in</span>
     </div>
   </div>
+</div>
+
+<!-- ===== iOS INSTALL HINT (shown only on iPhone Safari, not yet installed) ===== -->
+<div id="ios-install-hint" style="display:none;position:fixed;bottom:14px;left:14px;right:14px;z-index:1100;background:#0f1117;color:white;border-radius:14px;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.4);align-items:center;gap:12px">
+  <div style="width:38px;height:38px;border-radius:9px;background:#06C167;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-bolt" style="font-size:20px;color:white"></i></div>
+  <div style="flex:1;font-size:13px;line-height:1.4">Install FlashRush: tap <strong>Share</strong> then <strong>"Add to Home Screen"</strong></div>
+  <button onclick="document.getElementById('ios-install-hint').style.display='none'" style="background:rgba(255,255,255,.12);border:none;color:white;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;flex-shrink:0">Got it</button>
 </div>
 
 <!-- ===== AUTH STATUS BAR ===== -->
@@ -2444,6 +2460,17 @@ async function bookDelivery(){
 
 // Compute an initial quote once the client is ready.
 setTimeout(() => { if (hasClient()) updateQuote(); }, 300);
+
+// Show iOS "Add to Home Screen" hint only on iPhone Safari, not already installed.
+(function iosInstallHint(){
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isStandalone){
+    const el = document.getElementById('ios-install-hint');
+    if (el) setTimeout(() => { el.style.display = 'flex'; }, 1500);
+  }
+})();
 
 // ===== LIVE LISTS: load real data into screens =====
 const STATUS_LABEL = {

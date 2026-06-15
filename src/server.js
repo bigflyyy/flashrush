@@ -5,7 +5,7 @@ import http from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import './db/db.js'; // loads/initializes the datastore
+import db from './db/db.js'; // data layer (Postgres or JSON)
 import { seedData } from './db/seed.js';
 import { attachRealtime } from './lib/realtime.js';
 import authRoutes from './routes/auth.js';
@@ -41,13 +41,23 @@ app.use((err, req, res, next) => {
 const server = http.createServer(app);
 attachRealtime(server);
 
-// Auto-seed on first boot only (no-op if data already exists).
-const seedResult = seedData(false);
-if (seedResult.seeded) console.log('  ✓ Database seeded with demo data (first boot)');
-else console.log('  ✓ Database already populated — skipping seed');
+async function start() {
+  // Initialize the data layer (connect to Postgres or load JSON) BEFORE serving.
+  await db.init();
 
-server.listen(PORT, () => {
-  console.log(`\n⚡ FlashRush courier server on http://localhost:${PORT}`);
-  console.log(`  ✓ REST API at /api`);
-  console.log(`  Payments: ${process.env.STRIPE_SECRET_KEY?.startsWith('sk_') ? 'LIVE' : 'MOCK mode (no Stripe key)'}\n`);
+  // Auto-seed on first boot only (no-op if data already exists).
+  const seedResult = seedData(false);
+  if (seedResult.seeded) console.log('  ✓ Database seeded with demo data (first boot)');
+  else console.log('  ✓ Database already populated — skipping seed');
+
+  server.listen(PORT, () => {
+    console.log(`\n⚡ FlashRush courier server on http://localhost:${PORT}`);
+    console.log(`  ✓ REST API at /api`);
+    console.log(`  Payments: ${process.env.STRIPE_SECRET_KEY?.startsWith('sk_') ? 'LIVE' : 'MOCK mode (no Stripe key)'}\n`);
+  });
+}
+
+start().catch((e) => {
+  console.error('Fatal startup error:', e);
+  process.exit(1);
 });
