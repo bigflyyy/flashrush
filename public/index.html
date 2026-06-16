@@ -368,17 +368,39 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
   <div style="background:white;border-radius:18px;width:100%;max-width:360px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
     <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">Flash<span style="color:#06C167">Rush</span></div>
     <div id="login-sub" style="font-size:13px;color:#888;text-align:center;margin-bottom:20px">Sign in to your account</div>
-    <input id="login-email" type="email" placeholder="Email" value="alex@flashrush.app" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
-    <input id="login-password" type="password" placeholder="Password" value="password123" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
-    <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px;text-align:center"></div>
-    <button id="login-btn" onclick="doLogin()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px">Sign In</button>
-    <div style="font-size:11px;color:#aaa;text-align:center;margin-top:14px;line-height:1.6">
-      Demo logins:<br>
-      alex@flashrush.app · marcus@flashrush.app<br>
-      sarah@flashrush.app (admin123) — rest use password123
+
+    <!-- Name (sign-up only) -->
+    <input id="signup-name" type="text" placeholder="Your name" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+
+    <input id="login-email" type="email" placeholder="Email" autocomplete="email" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+    <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
+
+    <!-- Role choice (sign-up only) -->
+    <div id="signup-role" style="display:none;margin:8px 0 4px">
+      <div style="font-size:11px;color:#888;margin-bottom:6px">I want to sign up as:</div>
+      <div style="display:flex;gap:8px">
+        <div onclick="pickRole(this,'customer')" class="role-opt sel" data-role="customer" style="flex:1;border:2px solid #06C167;border-radius:10px;padding:10px;text-align:center;cursor:pointer">
+          <i class="ti ti-package" style="font-size:20px;color:#06C167"></i>
+          <div style="font-size:12px;font-weight:600;margin-top:3px">Customer</div>
+          <div style="font-size:10px;color:#999">Send parcels</div>
+        </div>
+        <div onclick="pickRole(this,'driver')" class="role-opt" data-role="driver" style="flex:1;border:2px solid #eee;border-radius:10px;padding:10px;text-align:center;cursor:pointer">
+          <i class="ti ti-steering-wheel" style="font-size:20px;color:#555"></i>
+          <div style="font-size:12px;font-weight:600;margin-top:3px">Courier</div>
+          <div style="font-size:10px;color:#999">Deliver & earn</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px;text-align:center;margin-top:8px"></div>
+    <button id="login-btn" onclick="submitAuth()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px">Sign In</button>
+
+    <div style="text-align:center;margin-top:16px;font-size:13px;color:#666">
+      <span id="auth-toggle-text">New to FlashRush?</span>
+      <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:#06C167;font-weight:600;cursor:pointer;margin-left:4px">Create an account</span>
     </div>
     <div style="text-align:center;margin-top:14px">
-      <span onclick="closeLogin()" style="font-size:12px;color:#888;cursor:pointer;text-decoration:underline">Browse without signing in</span>
+      <span onclick="closeLogin()" style="font-size:12px;color:#aaa;cursor:pointer">Browse without signing in</span>
     </div>
   </div>
 </div>
@@ -2351,7 +2373,66 @@ async function doLogin(){
     errEl.textContent = e.message || 'Login failed';
     errEl.style.display='block';
   } finally {
-    btn.textContent='Sign In'; btn.disabled=false;
+    btn.textContent = authMode==='signup' ? 'Create Account' : 'Sign In'; btn.disabled=false;
+  }
+}
+
+// ----- Sign up / sign in mode handling -----
+let authMode = 'signin';     // 'signin' | 'signup'
+let signupRole = 'customer'; // 'customer' | 'driver'
+
+function pickRole(el, role){
+  signupRole = role;
+  document.querySelectorAll('.role-opt').forEach(o=>{
+    const on = o.getAttribute('data-role')===role;
+    o.classList.toggle('sel', on);
+    o.style.borderColor = on ? '#06C167' : '#eee';
+    const ic=o.querySelector('i'); if(ic) ic.style.color = on ? '#06C167' : '#555';
+  });
+}
+
+function toggleAuthMode(){
+  authMode = authMode==='signin' ? 'signup' : 'signin';
+  const isSignup = authMode==='signup';
+  document.getElementById('signup-name').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('signup-role').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('login-sub').textContent = isSignup ? 'Create your account' : 'Sign in to your account';
+  document.getElementById('login-btn').textContent = isSignup ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-toggle-text').textContent = isSignup ? 'Already have an account?' : 'New to FlashRush?';
+  document.getElementById('auth-toggle-link').textContent = isSignup ? 'Sign in' : 'Create an account';
+  document.getElementById('login-password').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
+  document.getElementById('login-error').style.display='none';
+}
+
+async function submitAuth(){
+  if (authMode==='signup') return doSignup();
+  return doLogin();
+}
+
+async function doSignup(){
+  if(!hasClient()) return;
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errEl.style.display='none';
+
+  if (!name){ errEl.textContent='Please enter your name'; errEl.style.display='block'; return; }
+  if (!email){ errEl.textContent='Please enter your email'; errEl.style.display='block'; return; }
+  if (pw.length < 6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
+
+  btn.textContent='Creating account...'; btn.disabled=true;
+  try {
+    const { user } = await FlashRush.register({ role: signupRole, name, email, password: pw });
+    closeLogin();
+    refreshAuthBar(user);
+    alert('Welcome to FlashRush, '+user.name+'! Your '+signupRole+' account is ready.');
+  } catch(e){
+    errEl.textContent = e.message || 'Sign up failed';
+    errEl.style.display='block';
+  } finally {
+    btn.textContent='Create Account'; btn.disabled=false;
   }
 }
 
