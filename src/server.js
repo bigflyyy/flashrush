@@ -45,10 +45,26 @@ async function start() {
   // Initialize the data layer (connect to Postgres or load JSON) BEFORE serving.
   await db.init();
 
-  // Auto-seed on first boot only (no-op if data already exists).
-  const seedResult = seedData(false);
-  if (seedResult.seeded) console.log('  ✓ Database seeded with demo data (first boot)');
-  else console.log('  ✓ Database already populated — skipping seed');
+  // Auto-seed ONLY on the very first boot, protected by a marker file on the
+  // persistent disk. Once seeded, this never runs again — even if the in-memory
+  // data somehow looks empty — so real data can never be overwritten by a reseed.
+  const seededMarker = (process.env.DB_PATH ? dirname(process.env.DB_PATH) : '.') + '/.seeded';
+  const fs = await import('fs');
+  const alreadySeededOnce = fs.existsSync(seededMarker);
+  const hasData = db.raw().users.length > 0;
+
+  if (!alreadySeededOnce && !hasData) {
+    const seedResult = seedData(false);
+    if (seedResult.seeded) {
+      try { fs.writeFileSync(seededMarker, new Date().toISOString()); } catch {}
+      console.log('  ✓ Database seeded with demo data (first boot)');
+    }
+  } else if (alreadySeededOnce && !hasData) {
+    console.warn('  ⚠ Seed marker exists but data is empty — NOT reseeding (protecting against data loss).');
+  } else {
+    console.log('  ✓ Database already populated — skipping seed');
+    if (!alreadySeededOnce) { try { fs.writeFileSync(seededMarker, new Date().toISOString()); } catch {} }
+  }
 
   server.listen(PORT, () => {
     console.log(`\n⚡ FlashRush courier server on http://localhost:${PORT}`);

@@ -35,10 +35,24 @@ let data = empty();
 let pool = null;
 
 // ---------- JSON file backing (local dev) ----------
+let fileLoadFailed = false;
 function loadFile() {
   if (existsSync(DB_PATH)) {
-    try { data = { ...empty(), ...JSON.parse(readFileSync(DB_PATH, 'utf8')) }; }
-    catch { data = empty(); }
+    const raw = readFileSync(DB_PATH, 'utf8');
+    // An existing but empty/whitespace file is treated as a real (empty) DB.
+    if (!raw.trim()) { data = empty(); return; }
+    try {
+      data = { ...empty(), ...JSON.parse(raw) };
+    } catch (e) {
+      // The file exists and has content but won't parse. DO NOT wipe it.
+      // Refuse to proceed so auto-seed can't overwrite real data.
+      fileLoadFailed = true;
+      console.error('FATAL: data file exists but failed to parse:', e.message);
+      console.error('Refusing to start to avoid overwriting data at', DB_PATH);
+      throw new Error('Corrupt or unreadable data file; aborting to protect data');
+    }
+  } else {
+    data = empty();
   }
 }
 let writeTimer = null;
