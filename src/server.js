@@ -26,6 +26,11 @@ app.use(express.json({ limit: '8mb' }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
+// Public client config (the Maps key is a browser key, restricted by domain in Google Console).
+app.get('/api/config', (req, res) => {
+  res.json({ googleMapsKey: process.env.GOOGLE_MAPS_KEY || null });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);

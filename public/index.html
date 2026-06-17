@@ -1082,13 +1082,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="width:10px;height:10px;border-radius:50%;background:#06C167;flex-shrink:0"></div>
         <div style="flex:1">
           <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.5px">Pickup</div>
-          <select id="bk-pickup" onchange="updateQuote()" style="border:none;outline:none;font-size:13px;font-weight:600;color:#000;width:100%;padding:2px 0;background:transparent;cursor:pointer">
-            <option value="37.3770,-122.0310">1235 El Camino Real, Sunnyvale</option>
-            <option value="37.3861,-122.0839">Downtown Mountain View</option>
-            <option value="37.4419,-122.1430">Stanford, Palo Alto</option>
-            <option value="37.4530,-122.1820">88 Oak Ave, Menlo Park</option>
-            <option value="37.3688,-122.0363">Sunnyvale Caltrain</option>
-          </select>
+          <input id="bk-pickup" type="text" placeholder="Enter pickup address" autocomplete="off" style="border:none;outline:none;font-size:13px;font-weight:600;color:#000;width:100%;padding:2px 0;background:transparent">
         </div>
         <i class="ti ti-current-location" style="font-size:18px;color:#06C167"></i>
       </div>
@@ -1096,13 +1090,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="width:10px;height:10px;border-radius:2px;background:#000;flex-shrink:0"></div>
         <div style="flex:1">
           <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.5px">Dropoff</div>
-          <select id="bk-dropoff" onchange="updateQuote()" style="border:none;outline:none;font-size:13px;font-weight:600;color:#000;width:100%;padding:2px 0;background:transparent;cursor:pointer">
-            <option value="37.4530,-122.1820">88 Oak Ave, Menlo Park</option>
-            <option value="37.4419,-122.1430">Stanford, Palo Alto</option>
-            <option value="37.3861,-122.0839">Downtown Mountain View</option>
-            <option value="37.3770,-122.0310">1235 El Camino Real, Sunnyvale</option>
-            <option value="37.4030,-122.1190">East Palo Alto</option>
-          </select>
+          <input id="bk-dropoff" type="text" placeholder="Enter dropoff address" autocomplete="off" style="border:none;outline:none;font-size:13px;font-weight:600;color:#000;width:100%;padding:2px 0;background:transparent">
         </div>
         <i class="ti ti-map-pin" style="font-size:18px;color:#ccc"></i>
       </div>
@@ -2471,13 +2459,16 @@ function refreshAuthBar(user){
 })();
 
 // ===== BOOKING FLOW: live quote → book → mock-pay =====
-function parseLatLng(v){ const [lat,lng]=v.split(',').map(Number); return {lat,lng}; }
+// Coordinates captured from Google Places autocomplete (or fallback presets).
+let pickupCoords = { lat: 37.3770, lng: -122.0310, address: '1235 El Camino Real, Sunnyvale' };
+let dropoffCoords = { lat: 37.4530, lng: -122.1820, address: '88 Oak Ave, Menlo Park' };
+
 function getBookingInputs(){
-  const pkSel = document.getElementById('bk-pickup');
-  const dpSel = document.getElementById('bk-dropoff');
+  const pkInput = document.getElementById('bk-pickup');
+  const dpInput = document.getElementById('bk-dropoff');
   return {
-    pickup: { ...parseLatLng(pkSel.value), address: pkSel.options[pkSel.selectedIndex].text },
-    dropoff: { ...parseLatLng(dpSel.value), address: dpSel.options[dpSel.selectedIndex].text },
+    pickup: { lat: pickupCoords.lat, lng: pickupCoords.lng, address: pkInput.value || pickupCoords.address },
+    dropoff: { lat: dropoffCoords.lat, lng: dropoffCoords.lng, address: dpInput.value || dropoffCoords.address },
     size: selectedSize,
     tip: parseFloat(document.getElementById('bk-tip').value) || 0,
     recipient_name: document.getElementById('bk-name').value.trim(),
@@ -2541,6 +2532,55 @@ async function bookDelivery(){
 
 // Compute an initial quote once the client is ready.
 setTimeout(() => { if (hasClient()) updateQuote(); }, 300);
+
+// ===== GOOGLE PLACES AUTOCOMPLETE for address entry =====
+let googleMapsReady = false;
+
+async function initAddressAutocomplete(){
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    if (!cfg.googleMapsKey){
+      console.log('No Maps key configured — address fields accept typed text with default coordinates.');
+      return; // graceful: inputs still work as plain text
+    }
+    // Load the Google Maps JS API with Places library.
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${cfg.googleMapsKey}&libraries=places&loading=async&callback=onGoogleMapsLoaded`;
+    s.async = true;
+    document.head.appendChild(s);
+  } catch(e){ console.log('Address autocomplete unavailable:', e.message); }
+}
+
+// Called by the Google script once loaded.
+window.onGoogleMapsLoaded = function(){
+  googleMapsReady = true;
+  attachAutocomplete('bk-pickup', (place) => { pickupCoords = place; updateQuote(); });
+  attachAutocomplete('bk-dropoff', (place) => { dropoffCoords = place; updateQuote(); });
+};
+
+function attachAutocomplete(inputId, onPick){
+  const input = document.getElementById(inputId);
+  if (!input || !window.google?.maps?.places) return;
+  // Bias results toward the Bay Area; remove bounds to go nationwide.
+  const ac = new google.maps.places.Autocomplete(input, {
+    fields: ['formatted_address', 'geometry'],
+    componentRestrictions: { country: 'us' },
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (place.geometry?.location){
+      onPick({
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        address: place.formatted_address || input.value,
+      });
+    }
+  });
+}
+
+// Kick off autocomplete setup after the page loads.
+setTimeout(initAddressAutocomplete, 500);
 
 // Show iOS "Add to Home Screen" hint only on iPhone Safari, not already installed.
 (function iosInstallHint(){
