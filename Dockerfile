@@ -6,5 +6,6 @@ COPY . .
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
-# Seed on first boot only if the data file doesn't exist, then start.
-CMD ["sh", "-c", "[ -f ./flashrush-data.json ] || npm run seed; npm start"]
+# The app seeds itself safely on first boot (guarded by a marker file on the
+# persistent disk), so the container simply starts the server. Never force-seed here.
+CMD ["npm", "start"]
