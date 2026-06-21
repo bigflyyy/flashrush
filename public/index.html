@@ -375,6 +375,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     <div id="signup-steps" style="display:none;align-items:center;justify-content:center;gap:6px;margin-bottom:16px">
       <div id="step-dot-1" style="width:26px;height:5px;border-radius:999px;background:#06C167"></div>
       <div id="step-dot-2" style="width:26px;height:5px;border-radius:999px;background:#e0e0e0"></div>
+      <div id="step-dot-3" style="display:none;width:26px;height:5px;border-radius:999px;background:#e0e0e0"></div>
     </div>
 
     <!-- Role choice (signup step 1) -->
@@ -407,6 +408,27 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     <div id="signup-step2">
       <input id="login-email" type="email" placeholder="Email" autocomplete="email" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
       <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
+    </div>
+
+    <!-- SIGNUP STEP 3 (courier only): vehicle details -->
+    <div id="signup-step3" style="display:none">
+      <div style="font-size:11px;color:#888;margin-bottom:6px">Vehicle type</div>
+      <div style="display:flex;gap:7px;margin-bottom:12px">
+        <div onclick="pickVehicle(this,'bike')" class="veh-opt sel" data-veh="bike" style="flex:1;border:2px solid #06C167;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer">
+          <i class="ti ti-bike" style="font-size:19px;color:#06C167"></i><div style="font-size:10px;font-weight:600;margin-top:2px">Bike</div>
+        </div>
+        <div onclick="pickVehicle(this,'scooter')" class="veh-opt" data-veh="scooter" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer">
+          <i class="ti ti-motorbike" style="font-size:19px;color:#555"></i><div style="font-size:10px;font-weight:600;margin-top:2px">Scooter</div>
+        </div>
+        <div onclick="pickVehicle(this,'car')" class="veh-opt" data-veh="car" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer">
+          <i class="ti ti-car" style="font-size:19px;color:#555"></i><div style="font-size:10px;font-weight:600;margin-top:2px">Car</div>
+        </div>
+        <div onclick="pickVehicle(this,'van')" class="veh-opt" data-veh="van" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer">
+          <i class="ti ti-truck" style="font-size:19px;color:#555"></i><div style="font-size:10px;font-weight:600;margin-top:2px">Van</div>
+        </div>
+      </div>
+      <input id="signup-plate" type="text" placeholder="License plate (if applicable)" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+      <input id="signup-coverage" type="text" placeholder="City / area you cover (e.g. Oakland)" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
     </div>
 
     <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin:6px 0;text-align:center"></div>
@@ -2447,6 +2469,7 @@ function renderAuthUI(){
     show('signup-role', false);
     show('signup-step1', false);
     show('signup-step2', true);
+    show('signup-step3', false);
     show('signup-back-btn', false);
     document.getElementById('login-sub').textContent = 'Sign in to your account';
     document.getElementById('login-btn').textContent = 'Sign In';
@@ -2456,33 +2479,48 @@ function renderAuthUI(){
     document.getElementById('auth-toggle-text').style.display = 'inline';
     return;
   }
-  // Sign-up: two steps.
+  // Sign-up. Couriers have 3 steps; customers have 2.
+  const totalSteps = signupRole === 'driver' ? 3 : 2;
   show('signup-steps', true, 'flex');
+  show('step-dot-3', totalSteps === 3);
   document.getElementById('step-dot-1').style.background = signupStep>=1 ? '#06C167' : '#e0e0e0';
   document.getElementById('step-dot-2').style.background = signupStep>=2 ? '#06C167' : '#e0e0e0';
-  document.getElementById('login-sub').textContent = signupStep===1 ? 'Create your account' : 'Almost there';
+  document.getElementById('step-dot-3').style.background = signupStep>=3 ? '#06C167' : '#e0e0e0';
 
-  if (signupStep === 1){
-    show('signup-role', true);
-    show('signup-step1', true);
-    show('signup-step2', false);
-    show('signup-back-btn', false);
-    document.getElementById('login-btn').textContent = 'Continue';
-    // toggle to sign-in available on step 1
-    document.getElementById('auth-toggle-text').style.display='inline';
-    document.getElementById('auth-toggle-link').style.display='inline';
-    document.getElementById('auth-toggle-text').textContent = 'Already have an account?';
-    document.getElementById('auth-toggle-link').textContent = 'Sign in';
-  } else {
-    show('signup-role', false);
-    show('signup-step1', false);
-    show('signup-step2', true);
-    show('signup-back-btn', true);
-    document.getElementById('login-btn').textContent = 'Create Account';
-    document.getElementById('auth-toggle-text').style.display='none';
-    document.getElementById('auth-toggle-link').style.display='none';
-  }
+  // Default: hide all step panels, show the current one.
+  show('signup-role', signupStep === 1);
+  show('signup-step1', signupStep === 1);
+  show('signup-step2', signupStep === 2);
+  show('signup-step3', signupStep === 3);
+  show('signup-back-btn', signupStep > 1);
+
+  // Subtitle per step.
+  const subs = { 1:'Create your account', 2: (totalSteps===3?'Your login details':'Almost there'), 3:'Vehicle details' };
+  document.getElementById('login-sub').textContent = subs[signupStep];
+
+  // Primary button label: last step = create, otherwise continue.
+  const isLastStep = signupStep === totalSteps;
+  document.getElementById('login-btn').textContent = isLastStep ? 'Create Account' : 'Continue';
+
+  // Toggle to sign-in only shown on step 1.
+  const showToggle = signupStep === 1;
+  document.getElementById('auth-toggle-text').style.display = showToggle ? 'inline' : 'none';
+  document.getElementById('auth-toggle-link').style.display = showToggle ? 'inline' : 'none';
+  document.getElementById('auth-toggle-text').textContent = 'Already have an account?';
+  document.getElementById('auth-toggle-link').textContent = 'Sign in';
+
   document.getElementById('login-password').setAttribute('autocomplete','new-password');
+}
+
+let signupVehicle = 'bike';
+function pickVehicle(el, veh){
+  signupVehicle = veh;
+  document.querySelectorAll('.veh-opt').forEach(o=>{
+    const on = o.getAttribute('data-veh')===veh;
+    o.classList.toggle('sel', on);
+    o.style.borderColor = on ? '#06C167' : '#eee';
+    const ic=o.querySelector('i'); if(ic) ic.style.color = on ? '#06C167' : '#555';
+  });
 }
 
 function pickRole(el, role){
@@ -2493,6 +2531,7 @@ function pickRole(el, role){
     o.style.borderColor = on ? '#06C167' : '#eee';
     const ic=o.querySelector('i'); if(ic) ic.style.color = on ? '#06C167' : '#555';
   });
+  renderAuthUI(); // step count changes with role
 }
 
 function toggleAuthMode(){
@@ -2504,15 +2543,15 @@ function toggleAuthMode(){
 }
 
 function signupBack(){
-  signupStep = 1;
+  if (signupStep > 1) signupStep--;
   document.getElementById('login-error').style.display='none';
   renderAuthUI();
 }
 
 async function submitAuth(){
   if (authMode==='signin') return doLogin();
-  // Signup flow
-  if (signupStep === 1) return signupContinue();
+  const totalSteps = signupRole === 'driver' ? 3 : 2;
+  if (signupStep < totalSteps) return signupContinue();
   return doSignup();
 }
 
@@ -2520,16 +2559,30 @@ function signupContinue(){
   const errEl = document.getElementById('login-error');
   errEl.style.display='none';
   const fail = (m)=>{ errEl.textContent=m; errEl.style.display='block'; };
-  if (signupRole === 'customer'){
+
+  if (signupStep === 1){
     const first = document.getElementById('signup-first').value.trim();
     const last = document.getElementById('signup-last').value.trim();
-    if (!first || !last){ fail('Please enter your first and last name'); return; }
-  } else {
-    const first = document.getElementById('signup-first').value.trim();
-    if (!first){ fail('Please enter your name'); return; }
+    if (signupRole === 'customer'){
+      if (!first || !last){ fail('Please enter your first and last name'); return; }
+    } else {
+      if (!first){ fail('Please enter your name'); return; }
+    }
+    signupStep = 2;
+    renderAuthUI();
+    return;
   }
-  signupStep = 2;
-  renderAuthUI();
+
+  if (signupStep === 2){
+    // Validate email + password before moving to courier vehicle step.
+    const email = document.getElementById('login-email').value.trim();
+    const pw = document.getElementById('login-password').value;
+    if (!email){ fail('Please enter your email'); return; }
+    if (pw.length < 6){ fail('Password must be at least 6 characters'); return; }
+    signupStep = 3;
+    renderAuthUI();
+    return;
+  }
 }
 
 async function doSignup(){
@@ -2551,6 +2604,13 @@ async function doSignup(){
     first_name: first, last_name: last,
     name: [first,last].filter(Boolean).join(' ') };
 
+  if (signupRole === 'driver'){
+    payload.vehicle = signupVehicle;
+    payload.plate = document.getElementById('signup-plate').value.trim();
+    payload.coverage_area = document.getElementById('signup-coverage').value.trim();
+    if (!payload.coverage_area){ fail('Please enter the area you cover'); return; }
+  }
+
   btn.textContent='Creating account...'; btn.disabled=true;
   try {
     const { user } = await FlashRush.register(payload);
@@ -2559,9 +2619,8 @@ async function doSignup(){
     alert('Welcome to FlashRush, '+user.name+'! Your '+signupRole+' account is ready.');
   } catch(e){
     fail(e.message || 'Sign up failed');
-    signupStep = 2; renderAuthUI();
   } finally {
-    btn.textContent='Create Account'; btn.disabled=false;
+    btn.textContent = (signupRole==='driver' ? 'Create Account' : 'Create Account'); btn.disabled=false;
   }
 }
 
