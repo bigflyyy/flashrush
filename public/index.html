@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+<script src="https://js.stripe.com/v3/"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--gr:#06C167;--grdk:#048a48;--warn:#FAC775;--danger:#e24b4a;--adm-bg:#0f1117;--adm-card:#1a1d27;--adm-border:#252836}
@@ -403,6 +404,28 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     <div style="text-align:center;margin-top:14px">
       <span onclick="closeLogin()" style="font-size:12px;color:#aaa;cursor:pointer">Browse without signing in</span>
     </div>
+  </div>
+</div>
+
+<!-- ===== STRIPE PAYMENT MODAL ===== -->
+<div id="pay-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:18px;width:100%;max-width:380px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800">Payment</div>
+      <button onclick="closePayModal()" style="background:#f5f5f5;border:none;border-radius:8px;padding:6px 9px;cursor:pointer"><i class="ti ti-x" style="font-size:16px"></i></button>
+    </div>
+    <div style="font-size:13px;color:#888;margin-bottom:4px" id="pay-summary">Parcel delivery</div>
+    <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#06C167;margin-bottom:16px" id="pay-amount">$0.00</div>
+
+    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Card details</div>
+    <div id="pay-card-element" style="border:1.5px solid #e0e0e0;border-radius:10px;padding:13px;margin-bottom:10px"></div>
+    <div id="pay-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px"></div>
+
+    <button id="pay-btn" onclick="confirmStripePayment()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Pay now</button>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:#aaa;display:flex;align-items:center;justify-content:center;gap:5px">
+      <i class="ti ti-lock" style="font-size:13px"></i> Secured by Stripe
+    </div>
+    <div id="pay-test-hint" style="display:none;text-align:center;margin-top:8px;font-size:11px;color:#bbb">Test mode — use card 4242 4242 4242 4242, any future date, any CVC</div>
   </div>
 </div>
 
@@ -2534,22 +2557,100 @@ async function bookDelivery(){
       recipient_name: inp.recipient_name, recipient_phone: inp.recipient_phone, parcel_note: inp.parcel_note,
     });
 
-    label.textContent = 'Processing payment...';
-    await FlashRush.payIntent(delivery.id);
-    await FlashRush.confirmMock(delivery.id);
+    label.textContent = 'Setting up payment...';
+    const intent = await FlashRush.payIntent(delivery.id);
 
-    label.textContent = 'Booked! ✓';
-    alert('Delivery #' + delivery.id + ' booked and paid!\\n' +
-          inp.pickup.address + ' → ' + inp.dropoff.address + '\\n' +
-          'Total: $' + delivery.total.toFixed(2) + '\\n\\nA courier can now accept it.');
-    custNav('cph3', null);
+    if (intent.mock){
+      // No Stripe configured — complete via mock and finish.
+      await FlashRush.confirmMock(delivery.id);
+      label.textContent = 'Booked! ✓';
+      alert('Delivery #' + delivery.id + ' booked and paid (test/mock)!\\nTotal: $' + delivery.total.toFixed(2));
+      custNav('cph3', null);
+    } else {
+      // Real Stripe flow — open the card modal to collect payment.
+      openPayModal(delivery, intent.clientSecret);
+    }
   } catch(e){
     alert('Booking failed: ' + (e.message || 'unknown error'));
   } finally {
     btn.disabled = false;
+    label.textContent = 'Book courier';
     setTimeout(updateQuote, 100);
   }
 }
+
+// ===== STRIPE PAYMENT =====
+let stripeObj = null, stripeElements = null, stripeCard = null;
+let payContext = { deliveryId: null, clientSecret: null };
+
+async function initStripe(){
+  try {
+    const res = await fetch('/api/config');
+    const cfg = await res.json();
+    if (cfg.stripePublishableKey && window.Stripe){
+      stripeObj = Stripe(cfg.stripePublishableKey);
+      // Test keys start with pk_test_ — show the test-card hint.
+      if (cfg.stripePublishableKey.startsWith('pk_test_')){
+        const hint = document.getElementById('pay-test-hint');
+        if (hint) hint.style.display = 'block';
+      }
+    }
+  } catch(e){ /* no stripe configured; mock flow will be used */ }
+}
+
+function openPayModal(delivery, clientSecret){
+  payContext = { deliveryId: delivery.id, clientSecret };
+  document.getElementById('pay-summary').textContent =
+    'Parcel → ' + (delivery.recipient_name || 'recipient');
+  document.getElementById('pay-amount').textContent = '$' + delivery.total.toFixed(2);
+  document.getElementById('pay-error').style.display = 'none';
+  document.getElementById('pay-modal').style.display = 'flex';
+
+  // Mount the Stripe card field.
+  if (stripeObj){
+    stripeElements = stripeObj.elements();
+    stripeCard = stripeElements.create('card', { style: { base: { fontSize: '15px' } } });
+    stripeCard.mount('#pay-card-element');
+  }
+}
+
+function closePayModal(){
+  document.getElementById('pay-modal').style.display = 'none';
+  if (stripeCard){ try{ stripeCard.unmount(); }catch{} stripeCard = null; }
+}
+
+async function confirmStripePayment(){
+  if (!stripeObj || !stripeCard){ alert('Payment system not ready.'); return; }
+  const btn = document.getElementById('pay-btn');
+  const errEl = document.getElementById('pay-error');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Processing...';
+
+  try {
+    const result = await stripeObj.confirmCardPayment(payContext.clientSecret, {
+      payment_method: { card: stripeCard },
+    });
+    if (result.error){
+      errEl.textContent = result.error.message;
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Pay now';
+      return;
+    }
+    if (result.paymentIntent && result.paymentIntent.status === 'succeeded'){
+      closePayModal();
+      alert('Payment successful! Delivery #' + payContext.deliveryId + ' is booked and paid.\\nA courier can now accept it.');
+      custNav('cph3', null);
+      loadMyDeliveries();
+    }
+  } catch(e){
+    errEl.textContent = e.message || 'Payment failed';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Pay now';
+  }
+}
+
+// Initialize Stripe on load.
+setTimeout(initStripe, 600);
 
 // Compute an initial quote once the client is ready.
 setTimeout(() => { if (hasClient()) updateQuote(); }, 300);
