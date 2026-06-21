@@ -367,18 +367,12 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
 
 <!-- ===== LOGIN MODAL (wired to live backend) ===== -->
 <div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px">
-  <div style="background:white;border-radius:18px;width:100%;max-width:360px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+  <div style="background:white;border-radius:18px;width:100%;max-width:380px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:88vh;overflow-y:auto">
     <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">Flash<span style="color:#06C167">Rush</span></div>
-    <div id="login-sub" style="font-size:13px;color:#888;text-align:center;margin-bottom:20px">Sign in to your account</div>
-
-    <!-- Name (sign-up only) -->
-    <input id="signup-name" type="text" placeholder="Your name" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
-
-    <input id="login-email" type="email" placeholder="Email" autocomplete="email" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
-    <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
+    <div id="login-sub" style="font-size:13px;color:#888;text-align:center;margin-bottom:18px">Sign in to your account</div>
 
     <!-- Role choice (sign-up only) -->
-    <div id="signup-role" style="display:none;margin:8px 0 4px">
+    <div id="signup-role" style="display:none;margin-bottom:14px">
       <div style="font-size:11px;color:#888;margin-bottom:6px">I want to sign up as:</div>
       <div style="display:flex;gap:8px">
         <div onclick="pickRole(this,'customer')" class="role-opt sel" data-role="customer" style="flex:1;border:2px solid #06C167;border-radius:10px;padding:10px;text-align:center;cursor:pointer">
@@ -394,8 +388,27 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       </div>
     </div>
 
-    <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px;text-align:center;margin-top:8px"></div>
-    <button id="login-btn" onclick="submitAuth()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:10px">Sign In</button>
+    <!-- Customer-only name fields (sign-up) -->
+    <div id="signup-cust-names" style="display:none;gap:8px;margin-bottom:10px">
+      <input id="signup-first" type="text" placeholder="First name" style="flex:1;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;outline:none">
+      <input id="signup-last" type="text" placeholder="Last name" style="flex:1;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;outline:none">
+    </div>
+
+    <!-- Generic name field (used for courier/simple signup) -->
+    <input id="signup-name" type="text" placeholder="Your name" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+
+    <!-- Phone (sign-up) -->
+    <input id="signup-phone" type="tel" placeholder="Phone number" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+
+    <input id="login-email" type="email" placeholder="Email" autocomplete="email" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+    <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+
+    <!-- Customer addresses (sign-up) -->
+    <input id="signup-home" type="text" placeholder="Home address" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+    <input id="signup-additional" type="text" placeholder="Additional address (optional)" style="display:none;width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
+
+    <div id="login-error" style="display:none;font-size:12px;color:#e24b4a;margin-bottom:8px;text-align:center"></div>
+    <button id="login-btn" onclick="submitAuth()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px">Sign In</button>
 
     <div style="text-align:center;margin-top:16px;font-size:13px;color:#666">
       <span id="auth-toggle-text">New to FlashRush?</span>
@@ -2413,6 +2426,35 @@ async function doLogin(){
 let authMode = 'signin';     // 'signin' | 'signup'
 let signupRole = 'customer'; // 'customer' | 'driver'
 
+const show = (id, on, disp='block') => {
+  const el = document.getElementById(id); if (el) el.style.display = on ? disp : 'none';
+};
+
+function applySignupFields(){
+  const isSignup = authMode === 'signup';
+  // Role picker only in signup.
+  show('signup-role', isSignup);
+  if (!isSignup){
+    // Sign-in: hide all signup-only fields.
+    ['signup-cust-names','signup-name','signup-phone','signup-home','signup-additional'].forEach(id=>show(id,false));
+    return;
+  }
+  // Signup: show fields based on role.
+  if (signupRole === 'customer'){
+    show('signup-cust-names', true, 'flex');
+    show('signup-name', false);
+    show('signup-phone', true);
+    show('signup-home', true);
+    show('signup-additional', true);
+  } else { // driver — keep simple for now (courier screen comes next)
+    show('signup-cust-names', false);
+    show('signup-name', true);
+    show('signup-phone', true);
+    show('signup-home', false);
+    show('signup-additional', false);
+  }
+}
+
 function pickRole(el, role){
   signupRole = role;
   document.querySelectorAll('.role-opt').forEach(o=>{
@@ -2421,13 +2463,13 @@ function pickRole(el, role){
     o.style.borderColor = on ? '#06C167' : '#eee';
     const ic=o.querySelector('i'); if(ic) ic.style.color = on ? '#06C167' : '#555';
   });
+  applySignupFields();
 }
 
 function toggleAuthMode(){
   authMode = authMode==='signin' ? 'signup' : 'signin';
   const isSignup = authMode==='signup';
-  document.getElementById('signup-name').style.display = isSignup ? 'block' : 'none';
-  document.getElementById('signup-role').style.display = isSignup ? 'block' : 'none';
+  applySignupFields();
   document.getElementById('login-sub').textContent = isSignup ? 'Create your account' : 'Sign in to your account';
   document.getElementById('login-btn').textContent = isSignup ? 'Create Account' : 'Sign In';
   document.getElementById('auth-toggle-text').textContent = isSignup ? 'Already have an account?' : 'New to FlashRush?';
@@ -2443,26 +2485,42 @@ async function submitAuth(){
 
 async function doSignup(){
   if(!hasClient()) return;
-  const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-password').value;
+  const phone = document.getElementById('signup-phone').value.trim();
   const errEl = document.getElementById('login-error');
   const btn = document.getElementById('login-btn');
   errEl.style.display='none';
 
-  if (!name){ errEl.textContent='Please enter your name'; errEl.style.display='block'; return; }
-  if (!email){ errEl.textContent='Please enter your email'; errEl.style.display='block'; return; }
-  if (pw.length < 6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
+  const fail = (msg) => { errEl.textContent = msg; errEl.style.display='block'; };
+
+  let payload = { role: signupRole, email, password: pw, phone };
+
+  if (signupRole === 'customer'){
+    const first = document.getElementById('signup-first').value.trim();
+    const last = document.getElementById('signup-last').value.trim();
+    if (!first || !last){ fail('Please enter your first and last name'); return; }
+    payload.first_name = first;
+    payload.last_name = last;
+    payload.home_address = document.getElementById('signup-home').value.trim();
+    payload.additional_address = document.getElementById('signup-additional').value.trim();
+  } else {
+    const name = document.getElementById('signup-name').value.trim();
+    if (!name){ fail('Please enter your name'); return; }
+    payload.name = name;
+  }
+
+  if (!email){ fail('Please enter your email'); return; }
+  if (pw.length < 6){ fail('Password must be at least 6 characters'); return; }
 
   btn.textContent='Creating account...'; btn.disabled=true;
   try {
-    const { user } = await FlashRush.register({ role: signupRole, name, email, password: pw });
+    const { user } = await FlashRush.register(payload);
     closeLogin();
     refreshAuthBar(user);
     alert('Welcome to FlashRush, '+user.name+'! Your '+signupRole+' account is ready.');
   } catch(e){
-    errEl.textContent = e.message || 'Sign up failed';
-    errEl.style.display='block';
+    fail(e.message || 'Sign up failed');
   } finally {
     btn.textContent='Create Account'; btn.disabled=false;
   }

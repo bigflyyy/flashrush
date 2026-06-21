@@ -7,8 +7,11 @@ const r = Router();
 
 // POST /api/auth/register
 r.post('/register', (req, res) => {
-  const { role = 'customer', name, email, password, phone } = req.body || {};
-  if (!name || !email || !password) {
+  const { role = 'customer', name, first_name, last_name, email, password, phone,
+          home_address, additional_address } = req.body || {};
+  // Allow either a combined `name` or first/last parts.
+  const fullName = name || [first_name, last_name].filter(Boolean).join(' ').trim();
+  if (!fullName || !email || !password) {
     return res.status(400).json({ error: 'name, email, and password are required' });
   }
   if (!['customer', 'driver'].includes(role)) {
@@ -18,9 +21,10 @@ r.post('/register', (req, res) => {
     return res.status(409).json({ error: 'Email already registered' });
   }
 
-  const avatar = name.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase();
+  const avatar = fullName.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase();
   const user = db.users.insert({
-    role, name, email, password_hash: hashPassword(password),
+    role, name: fullName, first_name: first_name || null, last_name: last_name || null,
+    email, password_hash: hashPassword(password),
     phone: phone || null, avatar, created_at: new Date().toISOString(),
   });
 
@@ -33,10 +37,11 @@ r.post('/register', (req, res) => {
   } else {
     db.customerProfiles.insert({
       user_id: user.id, total_spent: 0, total_deliveries: 0, rating: 5.0, stripe_customer_id: null,
+      home_address: home_address || null, additional_address: additional_address || null,
     });
   }
 
-  const pub = { id: user.id, role, name, email };
+  const pub = { id: user.id, role, name: fullName, email };
   res.status(201).json({ token: signToken(pub), user: pub });
 });
 
