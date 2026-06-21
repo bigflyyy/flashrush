@@ -2745,6 +2745,7 @@ function closeTracking(){
 
 // ===== DRIVER: share real GPS location for the active delivery =====
 let driverWatchId = null;
+let driverPingInterval = null;
 let driverActiveDeliveryId = null;
 
 async function toggleDriverLocation(btn){
@@ -2755,17 +2756,21 @@ async function toggleDriverLocation(btn){
   if (driverWatchId !== null){
     navigator.geolocation.clearWatch(driverWatchId);
     driverWatchId = null;
+    if (driverPingInterval){ clearInterval(driverPingInterval); driverPingInterval = null; }
     label.textContent = 'Start sharing';
     btn.style.background = '#06C167';
     return;
   }
 
-  // Find the driver's active delivery to attach pings to.
+  // Find ALL of the driver's active deliveries — share location to each, so
+  // whichever parcel a customer is tracking receives the courier's position.
+  let activeIds = [];
   try {
     const { deliveries } = await FlashRush.deliveries();
-    const mine = deliveries.find(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
-    if (!mine){ alert('No active delivery to share location for. Accept a job first.'); return; }
-    driverActiveDeliveryId = mine.id;
+    activeIds = deliveries
+      .filter(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status))
+      .map(d => d.id);
+    if (!activeIds.length){ alert('No active delivery to share location for. Accept a job first.'); return; }
   } catch(e){ alert('Could not load your delivery: '+(e.message||'error')); return; }
 
   if (!navigator.geolocation){ alert('Your device does not support location sharing.'); return; }
@@ -2773,19 +2778,33 @@ async function toggleDriverLocation(btn){
   label.textContent = 'Sharing… (tap to stop)';
   btn.style.background = '#e24b4a';
 
+  const sendPos = (lat, lng) => activeIds.forEach(id => FlashRush.pingLocation(id, lat, lng).catch(()=>{}));
+
+  // Send one position immediately so the customer sees the dot right away.
+  navigator.geolocation.getCurrentPosition(
+    (pos) => sendPos(pos.coords.latitude, pos.coords.longitude),
+    () => {},
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+
+  // Re-send the last known position every 5s (so a stationary courier still shows live),
+  // and update whenever the real position changes.
+  let lastPos = null;
   driverWatchId = navigator.geolocation.watchPosition(
     (pos) => {
-      const { latitude, longitude } = pos.coords;
-      FlashRush.pingLocation(driverActiveDeliveryId, latitude, longitude).catch(()=>{});
+      lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      sendPos(lastPos.lat, lastPos.lng);
     },
     (err) => {
       alert('Location error: '+err.message+'. Make sure you allowed location access.');
       label.textContent = 'Start sharing';
       btn.style.background = '#06C167';
-      driverWatchId = null;
+      if (driverWatchId !== null){ navigator.geolocation.clearWatch(driverWatchId); driverWatchId = null; }
+      if (driverPingInterval){ clearInterval(driverPingInterval); driverPingInterval = null; }
     },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
   );
+  driverPingInterval = setInterval(() => { if (lastPos) sendPos(lastPos.lat, lastPos.lng); }, 5000);
 }
 
 // --- Admin: live orders ---
