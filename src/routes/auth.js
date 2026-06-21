@@ -7,8 +7,7 @@ const r = Router();
 
 // POST /api/auth/register
 r.post('/register', (req, res) => {
-  const { role = 'customer', name, first_name, last_name, email, password, phone,
-          home_address, additional_address } = req.body || {};
+  const { role = 'customer', name, first_name, last_name, email, password, phone } = req.body || {};
   // Allow either a combined `name` or first/last parts.
   const fullName = name || [first_name, last_name].filter(Boolean).join(' ').trim();
   if (!fullName || !email || !password) {
@@ -37,7 +36,6 @@ r.post('/register', (req, res) => {
   } else {
     db.customerProfiles.insert({
       user_id: user.id, total_spent: 0, total_deliveries: 0, rating: 5.0, stripe_customer_id: null,
-      home_address: home_address || null, additional_address: additional_address || null,
     });
   }
 
