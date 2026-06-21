@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#06C167">
 <!-- iOS: enables "Add to Home Screen" full-screen app behavior -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FlashRush">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -405,6 +406,26 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
   </div>
 </div>
 
+<!-- ===== LIVE TRACKING MAP OVERLAY ===== -->
+<div id="track-overlay" style="display:none;position:fixed;inset:0;background:white;z-index:1200;flex-direction:column">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #eee;flex-shrink:0">
+    <button onclick="closeTracking()" style="background:#f5f5f5;border:none;border-radius:9px;padding:8px 10px;cursor:pointer"><i class="ti ti-arrow-left" style="font-size:18px"></i></button>
+    <div style="flex:1">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800" id="track-title">Tracking parcel</div>
+      <div style="font-size:12px;color:#888" id="track-status">Connecting…</div>
+    </div>
+    <div id="track-eta" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#06C167"></div>
+  </div>
+  <div id="track-map" style="flex:1;background:#eef1f3"></div>
+  <div style="padding:12px 16px;border-top:1px solid #eee;flex-shrink:0;display:flex;align-items:center;gap:11px">
+    <div id="track-courier-avatar" style="width:38px;height:38px;border-radius:50%;background:#06C167;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:white;flex-shrink:0">··</div>
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:600" id="track-courier-name">Waiting for courier…</div>
+      <div style="font-size:11px;color:#888" id="track-courier-sub">Live location updates appear here</div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== iOS INSTALL HINT (shown only on iPhone Safari, not yet installed) ===== -->
 <div id="ios-install-hint" style="display:none;position:fixed;bottom:14px;left:14px;right:14px;z-index:1100;background:#0f1117;color:white;border-radius:14px;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.4);align-items:center;gap:12px">
   <div style="width:38px;height:38px;border-radius:9px;background:#06C167;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-bolt" style="font-size:20px;color:white"></i></div>
@@ -509,7 +530,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <div style="background:#f5f5f5;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:500">$27.58</div>
       </div>
       <div style="padding:0 14px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button style="background:#06C167;color:white;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-navigation"></i>Navigate</button>
+        <button onclick="toggleDriverLocation(this)" style="background:#06C167;color:white;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-navigation"></i><span>Start sharing</span></button>
         <button style="background:#f0f0f0;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer">Mark Delivered</button>
       </div>
     </div>
@@ -2648,7 +2669,124 @@ async function loadMyDeliveries(){
   } catch(e){ /* not logged in or network issue: leave sample visible */ }
 }
 
-function trackDelivery(id){ alert('Live tracking for parcel #'+id+' — real-time map coming in the next step.'); }
+// ===== LIVE TRACKING (customer) =====
+let trackMap = null, trackCourierMarker = null, trackSocket = null, trackData = null;
+
+async function trackDelivery(id){
+  if (!hasClient() || !FlashRush.token){ openLogin(); return; }
+  // Fetch the delivery details.
+  let delivery;
+  try { const r = await FlashRush.delivery(id); delivery = r.delivery; }
+  catch(e){ alert('Could not load delivery: '+(e.message||'error')); return; }
+  trackData = delivery;
+
+  document.getElementById('track-overlay').style.display='flex';
+  document.getElementById('track-title').textContent = 'Parcel #'+delivery.id+' → '+(delivery.recipient_name||'recipient');
+  document.getElementById('track-status').textContent = STATUS_LABEL[delivery.status]||delivery.status;
+  document.getElementById('track-courier-name').textContent = delivery.driver_id ? 'Courier en route' : 'Waiting for a courier to accept';
+
+  // Ensure Google Maps is loaded, then render.
+  if (window.google?.maps){ renderTrackMap(delivery); }
+  else { await initAddressAutocomplete(); setTimeout(()=>{ if(window.google?.maps) renderTrackMap(delivery); }, 1500); }
+
+  // Subscribe to live location + status updates over WebSocket.
+  if (trackSocket) { try{trackSocket.close();}catch{} }
+  trackSocket = FlashRush.track(delivery.id, (event, payload) => {
+    if (event === 'location'){
+      updateCourierPosition(payload.lat, payload.lng);
+      document.getElementById('track-status').textContent = 'Courier moving · live';
+      document.getElementById('track-courier-sub').textContent = 'Updated just now';
+    } else if (event === 'status'){
+      document.getElementById('track-status').textContent = STATUS_LABEL[payload.status]||payload.status;
+    }
+  });
+}
+
+function renderTrackMap(d){
+  const pickup = { lat: d.pickup_lat, lng: d.pickup_lng };
+  const dropoff = { lat: d.dropoff_lat, lng: d.dropoff_lng };
+  const center = { lat: (pickup.lat+dropoff.lat)/2, lng: (pickup.lng+dropoff.lng)/2 };
+  trackMap = new google.maps.Map(document.getElementById('track-map'), {
+    center, zoom: 12, disableDefaultUI: true, zoomControl: true,
+  });
+  // Pickup pin (green) and dropoff pin (black).
+  new google.maps.Marker({ position: pickup, map: trackMap, label: 'A',
+    title: 'Pickup: '+(d.pickup_address||'') });
+  new google.maps.Marker({ position: dropoff, map: trackMap, label: 'B',
+    title: 'Dropoff: '+(d.dropoff_address||'') });
+  // Fit both points in view.
+  const bounds = new google.maps.LatLngBounds();
+  bounds.extend(pickup); bounds.extend(dropoff);
+  trackMap.fitBounds(bounds, 60);
+}
+
+function updateCourierPosition(lat, lng){
+  if (!trackMap || !window.google?.maps) return;
+  const pos = { lat, lng };
+  if (!trackCourierMarker){
+    trackCourierMarker = new google.maps.Marker({
+      position: pos, map: trackMap, title: 'Courier',
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE, scale: 9,
+        fillColor: '#06C167', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3,
+      },
+    });
+  } else {
+    trackCourierMarker.setPosition(pos);
+  }
+  trackMap.panTo(pos);
+}
+
+function closeTracking(){
+  document.getElementById('track-overlay').style.display='none';
+  if (trackSocket){ try{trackSocket.close();}catch{} trackSocket=null; }
+  trackCourierMarker = null; trackMap = null;
+}
+
+// ===== DRIVER: share real GPS location for the active delivery =====
+let driverWatchId = null;
+let driverActiveDeliveryId = null;
+
+async function toggleDriverLocation(btn){
+  if (!hasClient() || !FlashRush.token){ alert('Sign in as a courier first.'); openLogin(); return; }
+  const label = btn.querySelector('span');
+
+  // If already sharing, stop.
+  if (driverWatchId !== null){
+    navigator.geolocation.clearWatch(driverWatchId);
+    driverWatchId = null;
+    label.textContent = 'Start sharing';
+    btn.style.background = '#06C167';
+    return;
+  }
+
+  // Find the driver's active delivery to attach pings to.
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const mine = deliveries.find(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
+    if (!mine){ alert('No active delivery to share location for. Accept a job first.'); return; }
+    driverActiveDeliveryId = mine.id;
+  } catch(e){ alert('Could not load your delivery: '+(e.message||'error')); return; }
+
+  if (!navigator.geolocation){ alert('Your device does not support location sharing.'); return; }
+
+  label.textContent = 'Sharing… (tap to stop)';
+  btn.style.background = '#e24b4a';
+
+  driverWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      FlashRush.pingLocation(driverActiveDeliveryId, latitude, longitude).catch(()=>{});
+    },
+    (err) => {
+      alert('Location error: '+err.message+'. Make sure you allowed location access.');
+      label.textContent = 'Start sharing';
+      btn.style.background = '#06C167';
+      driverWatchId = null;
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+  );
+}
 
 // --- Admin: live orders ---
 async function loadAdminOrders(){
