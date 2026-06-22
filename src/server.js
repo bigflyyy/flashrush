@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import deliveryRoutes from './routes/deliveries.js';
 import paymentRoutes from './routes/payments.js';
 import adminRoutes from './routes/admin.js';
+import aiRoutes from './routes/ai.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -31,6 +32,7 @@ app.get('/api/config', (req, res) => {
   res.json({
     googleMapsKey: process.env.GOOGLE_MAPS_KEY || null,
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+    geofenceDisabled: process.env.GEOFENCE_DISABLED === 'true',
   });
 });
 
@@ -38,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use(express.static(join(__dirname, '../public')));
 

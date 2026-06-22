@@ -50,6 +50,12 @@ r.post('/', requireAuth, requireRole('customer'), (req, res) => {
   const surge = currentSurge();
   const q = quote({ miles, size, surge, tip });
 
+  // Guard photo size: base64 data URLs are stored inline, so cap them (~550KB raw)
+  // to keep the database lean. (Future: move photos to external object storage.)
+  if (parcel_photo && parcel_photo.length > 550000) {
+    return res.status(413).json({ error: 'Photo too large. Please use a smaller image.' });
+  }
+
   const delivery = db.deliveries.insert({
     customer_id: req.user.id,
     driver_id: null,
@@ -124,9 +130,52 @@ r.post('/:id/accept', requireAuth, requireRole('driver'), (req, res) => {
   res.json({ delivery: db.deliveries.get(d.id) });
 });
 
+// POST /api/deliveries/:id/confirm-size  (courier confirms or adjusts size at pickup)
+// body: { size }  — if size changes, the price is recomputed and the customer is notified.
+r.post('/:id/confirm-size', requireAuth, requireRole('driver'), (req, res) => {
+  const d = db.deliveries.get(req.params.id);
+  if (!d) return res.status(404).json({ error: 'Delivery not found' });
+  if (d.driver_id !== req.user.id) return res.status(403).json({ error: 'Not your delivery' });
+  const { size, reason } = req.body || {};
+  if (!SIZES.includes(size)) return res.status(400).json({ error: `size must be one of ${SIZES.join(', ')}` });
+
+  const patch = { courier_confirmed_size: size, size_confirmed_at: new Date().toISOString() };
+
+  // If the courier's size differs from the booked size, recompute the price and
+  // record the difference. This is informational — the customer is shown the change
+  // and reason, but no approval is required.
+  if (size !== d.parcel_size) {
+    const q = quote({ miles: d.miles, size, surge: d.surge || 1.0, tip: d.tip || 0 });
+    const oldTotal = d.total;
+    patch.parcel_size = size;
+    patch.subtotal = q.subtotal;
+    patch.service_fee = q.serviceFee;
+    patch.total = q.total;
+    patch.size_adjusted = true;
+    patch.price_difference = +(q.total - oldTotal).toFixed(2); // positive = customer owes more
+    patch.original_total = oldTotal;
+    patch.adjustment_reason = reason || 'Courier confirmed a different size at pickup';
+  }
+
+  db.deliveries.update(d.id, patch);
+  publish(`delivery:${d.id}`, 'size_confirmed', {
+    size, adjusted: size !== d.parcel_size, total: patch.total || d.total,
+    priceDifference: patch.price_difference || 0, reason: patch.adjustment_reason || '',
+  });
+  res.json({ delivery: db.deliveries.get(d.id) });
+});
+
 // PATCH /api/deliveries/:id/status
+function metersBetweenSrv(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+const GEOFENCE_M = 50;
+
 r.patch('/:id/status', requireAuth, (req, res) => {
-  const { status } = req.body || {};
+  const { status, lat, lng } = req.body || {};
   const d = db.deliveries.get(req.params.id);
   if (!d) return res.status(404).json({ error: 'Delivery not found' });
 
@@ -137,6 +186,23 @@ r.patch('/:id/status', requireAuth, (req, res) => {
   }
   if (!NEXT[d.status]?.includes(status)) {
     return res.status(400).json({ error: `Cannot move from ${d.status} to ${status}` });
+  }
+
+  // Geofence enforcement (drivers only; admins bypass). Pickup near pickup, delivered near dropoff.
+  // A server-side TEST_MODE env flag can disable the geofence for end-to-end testing.
+  const geofenceOn = process.env.GEOFENCE_DISABLED !== 'true';
+  if (isDriver && req.user.role !== 'admin' && geofenceOn) {
+    const fence = status === 'picked_up' ? { lat: d.pickup_lat, lng: d.pickup_lng, what: 'pickup' }
+                : status === 'delivered' ? { lat: d.dropoff_lat, lng: d.dropoff_lng, what: 'dropoff' } : null;
+    if (fence) {
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return res.status(400).json({ error: `Location required to mark ${status}` });
+      }
+      const dist = metersBetweenSrv(lat, lng, fence.lat, fence.lng);
+      if (dist > GEOFENCE_M) {
+        return res.status(403).json({ error: `Too far from ${fence.what} (${Math.round(dist)}m). Must be within ${GEOFENCE_M}m.` });
+      }
+    }
   }
 
   const patch = { status };

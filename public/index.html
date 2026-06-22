@@ -427,6 +427,18 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
           <i class="ti ti-truck" style="font-size:19px;color:#555"></i><div style="font-size:10px;font-weight:600;margin-top:2px">Van</div>
         </div>
       </div>
+
+      <!-- Car/van make-model-year (shown only for car/van) -->
+      <div id="signup-carinfo" style="display:none">
+        <div style="position:relative;margin-bottom:10px">
+          <input id="signup-makemodel" type="text" placeholder="Search your car (e.g. Toyota Camry)" autocomplete="off" oninput="searchVehicles(this.value)" onfocus="searchVehicles(this.value)" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;outline:none">
+          <div id="vehicle-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e0e0e0;border-radius:10px;margin-top:4px;max-height:180px;overflow-y:auto;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
+        </div>
+        <select id="signup-year" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none;background:white;cursor:pointer">
+          <option value="">Year</option>
+        </select>
+      </div>
+
       <input id="signup-plate" type="text" placeholder="License plate (if applicable)" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none">
       <input id="signup-coverage" type="text" placeholder="City / area you cover (e.g. Oakland)" style="width:100%;box-sizing:border-box;border:1.5px solid #e0e0e0;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:6px;outline:none">
     </div>
@@ -444,6 +456,29 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     <div style="text-align:center;margin-top:14px">
       <span onclick="closeLogin()" style="font-size:12px;color:#aaa;cursor:pointer">Browse without signing in</span>
     </div>
+  </div>
+</div>
+
+<!-- ===== COURIER: confirm/adjust size at pickup ===== -->
+<div id="courier-size-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1250;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:18px;width:100%;max-width:360px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto">
+    <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px">Confirm parcel size</div>
+    <div style="font-size:12px;color:#888;margin-bottom:14px">Check the parcel against the customer's claim. Your confirmation is final.</div>
+
+    <div id="cs-claimed" style="font-size:13px;margin-bottom:10px;padding:10px 12px;background:#f5f5f5;border-radius:10px"></div>
+    <img id="cs-photo" style="display:none;width:100%;border-radius:10px;max-height:200px;object-fit:cover;margin-bottom:12px" />
+    <div id="cs-nophoto" style="display:none;font-size:12px;color:#999;text-align:center;padding:14px;background:#fafafa;border-radius:10px;margin-bottom:12px">No customer photo — judge by the parcel in hand.</div>
+
+    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Actual size</div>
+    <div id="cs-sizes" style="display:flex;gap:7px;margin-bottom:14px">
+      <div onclick="csPickSize(this,'small')" class="cs-opt" data-size="small" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer"><div style="font-size:11px;font-weight:600">Envelope</div></div>
+      <div onclick="csPickSize(this,'medium')" class="cs-opt" data-size="medium" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer"><div style="font-size:11px;font-weight:600">Small</div></div>
+      <div onclick="csPickSize(this,'large')" class="cs-opt" data-size="large" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer"><div style="font-size:11px;font-weight:600">Large</div></div>
+      <div onclick="csPickSize(this,'xl')" class="cs-opt" data-size="xl" style="flex:1;border:2px solid #eee;border-radius:10px;padding:9px 4px;text-align:center;cursor:pointer"><div style="font-size:11px;font-weight:600">XL</div></div>
+    </div>
+    <div id="cs-note" style="display:none;font-size:12px;color:#e08a00;margin-bottom:10px"></div>
+    <button onclick="submitCourierSize()" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer">Confirm size</button>
+    <button onclick="document.getElementById('courier-size-overlay').style.display='none'" style="width:100%;background:#f5f5f5;color:#333;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -594,7 +629,10 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       </div>
       <div style="padding:0 14px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <button onclick="toggleDriverLocation(this)" style="background:#06C167;color:white;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-navigation"></i><span>Start sharing</span></button>
-        <button style="background:#f0f0f0;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer">Mark Delivered</button>
+        <button id="driver-action-btn" onclick="driverAdvanceStatus(this)" style="background:#000;color:white;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-circle-check" style="font-size:15px;color:#06C167"></i><span>Mark picked up</span></button>
+      </div>
+      <div style="padding:0 14px 12px">
+        <button onclick="openCourierSizeCheck()" style="width:100%;background:#0f1117;color:white;border:none;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><i class="ti ti-ruler-measure" style="font-size:15px;color:#06C167"></i>Confirm size at pickup</button>
       </div>
     </div>
     <!-- Surge banner -->
@@ -825,7 +863,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         </div>
         <span style="font-size:11px;color:#06C167;font-weight:600">Primary</span>
       </div>
-      <button style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Instant Cashout · $412 → Chase</button>
+      <button onclick="alert('Instant Cashout requires Stripe Connect payouts, set up when going live with real payments. This is a preview of how it will look.')" style="width:100%;background:#06C167;color:white;border:none;border-radius:10px;padding:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Instant Cashout · $412 → Chase</button>
     </div>
     <div style="height:8px"></div>
   </div>
@@ -1082,8 +1120,8 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
     </div>
   </div>
   <div style="overflow-y:auto;flex:1">
-    <!-- Live order tracking -->
-    <div style="background:#000;margin:10px 12px 8px;border-radius:14px;padding:14px;flex-shrink:0">
+    <!-- Live order tracking (dynamically populated; falls back to sample) -->
+    <div id="home-live-card" style="background:#000;margin:10px 12px 8px;border-radius:14px;padding:14px;flex-shrink:0">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div>
           <div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px">Parcel #1042</div>
@@ -1198,6 +1236,41 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
       <div onclick="pickSize(this,'medium')" class="size-opt sel" style="flex:1;background:white;border:2px solid #06C167;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer"><i class="ti ti-package" style="font-size:20px;color:#06C167"></i><div style="font-size:11px;font-weight:600;color:#000;margin-top:4px">Small</div></div>
       <div onclick="pickSize(this,'large')" class="size-opt" style="flex:1;background:white;border:2px solid #eee;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer"><i class="ti ti-box" style="font-size:20px;color:#555"></i><div style="font-size:11px;font-weight:600;color:#000;margin-top:4px">Large</div></div>
       <div onclick="pickSize(this,'xl')" class="size-opt" style="flex:1;background:white;border:2px solid #eee;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer"><i class="ti ti-stack-2" style="font-size:20px;color:#555"></i><div style="font-size:11px;font-weight:600;color:#000;margin-top:4px">XL</div></div>
+    </div>
+
+    <!-- AI photo size verification (required to book) -->
+    <div id="ai-photo-block" style="margin:0 12px 8px">
+      <div style="background:linear-gradient(135deg,#0f1117,#1a1f2e);border-radius:14px;padding:14px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <i class="ti ti-camera-check" style="font-size:16px;color:#06C167"></i>
+          <span style="font-size:12px;font-weight:600;color:white">Verify your parcel size</span>
+        </div>
+        <div style="font-size:11px;color:#8b93a7;margin-bottom:10px">Add a photo, or describe it — our AI confirms the size. Required to book.</div>
+
+        <input type="file" id="parcel-photo-input" accept="image/*" capture="environment" onchange="handleParcelPhoto(event)" style="display:none">
+
+        <div id="photo-empty" onclick="document.getElementById('parcel-photo-input').click()" style="border:1.5px dashed #3a4256;border-radius:10px;padding:18px;text-align:center;cursor:pointer">
+          <i class="ti ti-camera" style="font-size:24px;color:#06C167"></i>
+          <div style="font-size:12px;color:#cfd4df;margin-top:5px">Tap to add a photo</div>
+        </div>
+
+        <div id="photo-preview" style="display:none">
+          <img id="photo-img" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover;margin-bottom:8px" />
+          <div id="photo-verify-status" style="font-size:12px;color:#9fe7c0;display:flex;align-items:center;gap:6px;margin-bottom:8px"></div>
+          <button onclick="document.getElementById('parcel-photo-input').click()" style="width:100%;background:rgba(255,255,255,.1);color:white;border:none;border-radius:9px;padding:9px;font-size:12px;font-weight:600;cursor:pointer">Retake photo</button>
+        </div>
+
+        <!-- OR describe -->
+        <div style="text-align:center;font-size:11px;color:#6b7280;margin:10px 0 8px">— or —</div>
+        <div style="display:flex;gap:7px">
+          <input id="describe-input" type="text" placeholder="Describe your package" onkeydown="if(event.key==='Enter')describePackage()" style="flex:1;border:none;border-radius:9px;padding:10px 12px;font-size:13px;outline:none">
+          <button id="describe-btn" onclick="describePackage()" style="background:#06C167;color:white;border:none;border-radius:9px;padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Check</button>
+        </div>
+        <div id="describe-result" style="display:none;font-size:12px;color:#9fe7c0;margin-top:8px"></div>
+        <div id="describe-confirm" style="display:none;margin-top:8px">
+          <button onclick="confirmDescribedSize()" style="width:100%;background:#06C167;color:white;border:none;border-radius:9px;padding:9px;font-size:12px;font-weight:700;cursor:pointer">Yes, that's correct</button>
+        </div>
+      </div>
     </div>
     <!-- Note + tip -->
     <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:8px 14px 6px">Details</div>
@@ -2131,7 +2204,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
         <span style="font-size:11px;color:#888">Notify customers</span>
         <button class="ztog" onclick="this.classList.toggle('on')"></button>
       </div>
-      <button style="width:100%;background:#06C167;color:white;border:none;border-radius:8px;padding:8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer">Save Config</button>
+      <button onclick="alert('Config editing is view-only in this preview. Live config editing can be wired to the backend when you need it.')" style="width:100%;background:#06C167;color:white;border:none;border-radius:8px;padding:8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer">Save Config</button>
       <div style="margin-top:10px;background:rgba(226,75,74,.08);border:1px solid rgba(226,75,74,.2);border-radius:8px;padding:9px;font-size:11px;color:#e24b4a">⚠ East Palo Alto: only 2 drivers online. Consider raising surge to 1.8×.</div>
     </div>
   </div>
@@ -2317,7 +2390,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
           <div style="font-size:10px;color:#555;margin-bottom:4px">FlashPass monthly fee</div>
           <input class="adm-input" type="text" value="$9.99/mo" style="margin-bottom:0">
         </div>
-        <button style="width:100%;background:#06C167;color:white;border:none;border-radius:8px;padding:8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer">Save Fee Structure</button>
+        <button onclick="alert('Fee editing is view-only in this preview. Pricing is currently set in the backend pricing config. This can be made editable here when you need it.')" style="width:100%;background:#06C167;color:white;border:none;border-radius:8px;padding:8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer">Save Fee Structure</button>
       </div>
       <div style="background:#1a1d27;border:1px solid #252836;border-radius:11px;padding:14px">
         <div style="font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Admin Team</div>
@@ -2356,7 +2429,7 @@ function switchApp(id){
   });
 }
 let selectedSize = 'medium';
-function pickSize(el, size){
+function pickSize(el, size, isManual=true){
   selectedSize = size;
   const row = el.parentNode;
   row.querySelectorAll('.size-opt').forEach(o=>{
@@ -2368,6 +2441,15 @@ function pickSize(el, size){
   el.style.borderColor='#06C167';
   const ic=el.querySelector('i'); if(ic) ic.style.color='#06C167';
   if (typeof updateQuote==='function') updateQuote();
+  // If the user manually changes size after verifying, require re-verification.
+  if (isManual && typeof parcelPhotoVerified !== 'undefined' && parcelPhotoVerified){
+    parcelPhotoVerified = false;
+    const status = document.getElementById('photo-verify-status');
+    if (status && parcelPhotoData){
+      status.innerHTML = '⚠ Size changed — re-checking photo…';
+      if (typeof reverifyPhoto === 'function') reverifyPhoto();
+    }
+  }
 }
 function drvNav(screenId, el){
   const screens=['dph1','dph2','dph3','dph4'];
@@ -2494,6 +2576,9 @@ function renderAuthUI(){
   show('signup-step3', signupStep === 3);
   show('signup-back-btn', signupStep > 1);
 
+  // When the courier reaches the vehicle step, attach city autocomplete to coverage.
+  if (signupStep === 3) setTimeout(attachCityAutocomplete, 100);
+
   // Subtitle per step.
   const subs = { 1:'Create your account', 2: (totalSteps===3?'Your login details':'Almost there'), 3:'Vehicle details' };
   document.getElementById('login-sub').textContent = subs[signupStep];
@@ -2521,7 +2606,85 @@ function pickVehicle(el, veh){
     o.style.borderColor = on ? '#06C167' : '#eee';
     const ic=o.querySelector('i'); if(ic) ic.style.color = on ? '#06C167' : '#555';
   });
+  // Show car make/model/year only for car or van.
+  const isCar = (veh === 'car' || veh === 'van');
+  const carInfo = document.getElementById('signup-carinfo');
+  if (carInfo) carInfo.style.display = isCar ? 'block' : 'none';
+  // Plate required for car/van.
+  const plate = document.getElementById('signup-plate');
+  if (plate) plate.placeholder = isCar ? 'License plate (required)' : 'License plate (if applicable)';
+  if (isCar) populateYears();
 }
+
+// Built-in vehicle list (common makes + popular models). Not exhaustive, but covers
+// the vast majority of couriers; freeform text is still allowed if not found.
+const VEHICLE_DB = {
+  Toyota: ['Camry','Corolla','RAV4','Highlander','Prius','Tacoma','Tundra','Sienna','Yaris','4Runner'],
+  Honda: ['Civic','Accord','CR-V','Pilot','Odyssey','Fit','HR-V','Ridgeline'],
+  Ford: ['F-150','Escape','Explorer','Focus','Fusion','Transit','Edge','Ranger','Mustang'],
+  Chevrolet: ['Silverado','Equinox','Malibu','Cruze','Tahoe','Traverse','Express','Colorado'],
+  Nissan: ['Altima','Sentra','Rogue','Versa','Murano','Frontier','Pathfinder','NV200'],
+  Hyundai: ['Elantra','Sonata','Tucson','Santa Fe','Accent','Kona'],
+  Kia: ['Optima','Soul','Sportage','Forte','Sorento','Rio','Telluride'],
+  Jeep: ['Wrangler','Grand Cherokee','Cherokee','Compass','Renegade'],
+  Subaru: ['Outback','Forester','Impreza','Crosstrek','Legacy','Ascent'],
+  Volkswagen: ['Jetta','Passat','Golf','Tiguan','Atlas'],
+  Mercedes: ['Sprinter','Metris','C-Class','E-Class','GLC'],
+  RAM: ['ProMaster','ProMaster City','1500','2500'],
+  GMC: ['Sierra','Savana','Terrain','Acadia'],
+  Dodge: ['Grand Caravan','Charger','Journey'],
+  Mazda: ['Mazda3','Mazda6','CX-5','CX-30','CX-9'],
+  BMW: ['3 Series','5 Series','X3','X5'],
+  Tesla: ['Model 3','Model Y','Model S','Model X'],
+};
+
+// Flatten into "Make Model" search entries.
+const VEHICLE_LIST = [];
+for (const make of Object.keys(VEHICLE_DB)){
+  const cleanMake = make.replace(/_$/,'');
+  for (const model of VEHICLE_DB[make]) VEHICLE_LIST.push(cleanMake + ' ' + model);
+}
+
+function searchVehicles(q){
+  const box = document.getElementById('vehicle-suggestions');
+  if (!box) return;
+  q = (q||'').trim().toLowerCase();
+  if (!q){ box.style.display='none'; return; }
+  const matches = VEHICLE_LIST.filter(v => v.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length){ box.style.display='none'; return; }
+  box.innerHTML = '';
+  matches.forEach(v => {
+    const row = document.createElement('div');
+    row.textContent = v;
+    row.style.cssText = 'padding:11px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid #f4f4f4';
+    row.onmouseover = () => row.style.background = '#f7f7f7';
+    row.onmouseout = () => row.style.background = 'white';
+    row.onclick = () => selectVehicle(v);
+    box.appendChild(row);
+  });
+  box.style.display='block';
+}
+
+function selectVehicle(v){
+  document.getElementById('signup-makemodel').value = v;
+  document.getElementById('vehicle-suggestions').style.display='none';
+}
+
+function populateYears(){
+  const sel = document.getElementById('signup-year');
+  if (!sel || sel.options.length > 1) return; // already populated
+  const now = new Date().getFullYear();
+  for (let y = now+1; y >= 1995; y--){
+    const o = document.createElement('option'); o.value=y; o.textContent=y; sel.appendChild(o);
+  }
+}
+
+// Hide suggestions when clicking elsewhere.
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('vehicle-suggestions');
+  const input = document.getElementById('signup-makemodel');
+  if (box && input && e.target !== input && !box.contains(e.target)) box.style.display='none';
+});
 
 function pickRole(el, role){
   signupRole = role;
@@ -2608,6 +2771,11 @@ async function doSignup(){
     payload.vehicle = signupVehicle;
     payload.plate = document.getElementById('signup-plate').value.trim();
     payload.coverage_area = document.getElementById('signup-coverage').value.trim();
+    if (signupVehicle === 'car' || signupVehicle === 'van'){
+      payload.vehicle_model = document.getElementById('signup-makemodel').value.trim();
+      payload.vehicle_year = document.getElementById('signup-year').value;
+      if (!payload.plate){ fail('License plate is required for a car or van'); return; }
+    }
     if (!payload.coverage_area){ fail('Please enter the area you cover'); return; }
   }
 
@@ -2704,6 +2872,14 @@ async function bookDelivery(){
   const label = document.getElementById('bk-btn-label');
   const inp = getBookingInputs();
   if (!inp.recipient_name){ alert('Please enter a recipient name.'); return; }
+  // Require EITHER a verified photo OR a confirmed description.
+  const hasPhoto = parcelPhotoData && parcelPhotoVerified;
+  const hasDescribe = describeVerified;
+  if (!hasPhoto && !hasDescribe){
+    alert('Please verify your parcel size — add a photo or describe your package.');
+    return;
+  }
+  if (parcelPhotoData) inp.parcel_photo = parcelPhotoData;
 
   btn.disabled = true;
   try {
@@ -2722,6 +2898,7 @@ async function bookDelivery(){
       label.textContent = 'Booked! ✓';
       alert('Delivery #' + delivery.id + ' booked and paid (test/mock)!\\nTotal: $' + delivery.total.toFixed(2));
       custNav('cph3', null);
+      loadMyDeliveries();
     } else {
       // Real Stripe flow — open the card modal to collect payment.
       openPayModal(delivery, intent.clientSecret);
@@ -2811,6 +2988,412 @@ setTimeout(initStripe, 600);
 // Compute an initial quote once the client is ready.
 setTimeout(() => { if (hasClient()) updateQuote(); }, 300);
 
+// ===== AI PHOTO SIZE VERIFICATION (required to book) =====
+let parcelPhotoVerified = false;
+let parcelPhotoData = null;
+
+function resizeImage(file, maxDim, cb){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDim){ height = height*maxDim/width; width = maxDim; }
+      else if (height > maxDim){ width = width*maxDim/height; height = maxDim; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      cb(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function handleParcelPhoto(event){
+  const file = event.target.files[0];
+  if (!file) return;
+  parcelPhotoVerified = false;
+  resizeImage(file, 1000, async (dataUrl) => {
+    parcelPhotoData = dataUrl;
+    // Show preview.
+    document.getElementById('photo-empty').style.display = 'none';
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('photo-img').src = dataUrl;
+    const status = document.getElementById('photo-verify-status');
+    status.innerHTML = '<i class="ti ti-loader" style="font-size:14px"></i> AI is checking your parcel size…';
+
+    if (!hasClient()){ status.textContent = 'Cannot verify right now.'; return; }
+    try {
+      const res = await FlashRush.aiVerifySize(parcelPhotoData, selectedSize);
+      if (res.available === false){
+        // No AI configured — accept the photo without verification.
+        parcelPhotoVerified = true;
+        status.innerHTML = '✓ Photo added.';
+        return;
+      }
+      const label = { small:'Envelope', medium:'Small', large:'Large', xl:'XL' };
+      if (res.agrees){
+        status.innerHTML = '✓ Verified — size matches ('+label[res.size]+').';
+      } else {
+        // Override the size to what the AI determined, and explain.
+        selectSizeButton(res.size);
+        status.innerHTML = '⚠ Adjusted to <strong>'+label[res.size]+'</strong> based on your photo'
+          + (res.reason ? ' — '+res.reason : '') + '. Price updated.';
+      }
+      parcelPhotoVerified = true;
+    } catch(e){
+      status.textContent = 'Could not verify the photo. Please try another photo.';
+      parcelPhotoVerified = false;
+    }
+  });
+}
+
+// Map a size value to the on-screen size button so we can auto-select it.
+function selectSizeButton(size){
+  const map = { small:0, medium:1, large:2, xl:3 };
+  const idx = map[size];
+  const opts = document.querySelectorAll('.size-opt');
+  if (opts[idx]) pickSize(opts[idx], size, false); // false = not a manual change
+}
+
+// Re-run verification against the current size using the existing photo.
+async function reverifyPhoto(){
+  if (!parcelPhotoData || !hasClient()) return;
+  const status = document.getElementById('photo-verify-status');
+  try {
+    const res = await FlashRush.aiVerifySize(parcelPhotoData, selectedSize);
+    if (res.available === false){ parcelPhotoVerified = true; status.innerHTML='✓ Photo added.'; return; }
+    const label = { small:'Envelope', medium:'Small', large:'Large', xl:'XL' };
+    if (res.agrees){
+      status.innerHTML = '✓ Verified — size matches ('+label[res.size]+').';
+    } else {
+      selectSizeButton(res.size);
+      status.innerHTML = '⚠ Adjusted to <strong>'+label[res.size]+'</strong> based on your photo'
+        + (res.reason ? ' — '+res.reason : '') + '. Price updated.';
+    }
+    parcelPhotoVerified = true;
+  } catch(e){ status.textContent = 'Could not verify the photo.'; parcelPhotoVerified = false; }
+}
+
+// ===== DESCRIBE PATH: AI estimates size from text, asks customer to confirm =====
+let describeVerified = false;
+let describedSize = null;
+const SIZE_LABELS = { small:'Envelope', medium:'Small', large:'Large', xl:'XL' };
+
+async function describePackage(){
+  if (!hasClient()) return;
+  const desc = document.getElementById('describe-input').value.trim();
+  const resultEl = document.getElementById('describe-result');
+  const confirmEl = document.getElementById('describe-confirm');
+  const btn = document.getElementById('describe-btn');
+  if (!desc) return;
+  btn.textContent='...'; btn.disabled=true;
+  resultEl.style.display='none'; confirmEl.style.display='none';
+  describeVerified = false;
+  try {
+    const res = await FlashRush.aiParcelSize(desc);
+    if (res.available === false){
+      // No AI — accept the description as-is.
+      describeVerified = true;
+      resultEl.textContent = '✓ Description saved.';
+      resultEl.style.display='block';
+      return;
+    }
+    describedSize = res.size;
+    selectSizeButton(res.size);
+    resultEl.innerHTML = 'Based on your description, this looks like <strong>'+SIZE_LABELS[res.size]+'</strong>'
+      + (res.reason ? ' — '+res.reason : '') + '.<br>Is this correct?';
+    resultEl.style.display='block';
+    confirmEl.style.display='block';
+  } catch(e){
+    resultEl.textContent = 'Could not check the description. Try a photo instead.';
+    resultEl.style.display='block';
+  } finally {
+    btn.textContent='Check'; btn.disabled=false;
+  }
+}
+
+function confirmDescribedSize(){
+  describeVerified = true;
+  document.getElementById('describe-confirm').style.display='none';
+  document.getElementById('describe-result').innerHTML = '✓ Confirmed — <strong>'+SIZE_LABELS[describedSize]+'</strong>.';
+}
+
+// ===== COURIER: confirm/adjust size at pickup =====
+let csDeliveryId = null, csSelectedSize = null, csClaimedSize = null;
+
+async function openCourierSizeCheck(){
+  if (!hasClient() || !FlashRush.token){ alert('Sign in as a courier first.'); openLogin(); return; }
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const active = deliveries.find(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
+    if (!active){ alert('No active delivery to confirm. Accept a job first.'); return; }
+    csDeliveryId = active.id;
+    csClaimedSize = active.parcel_size;
+    csSelectedSize = active.parcel_size;
+
+    const labels = { small:'Envelope', medium:'Small', large:'Large', xl:'XL' };
+    document.getElementById('cs-claimed').innerHTML =
+      'Customer claims: <strong>'+(labels[active.parcel_size]||active.parcel_size)+'</strong> · Parcel #'+active.id;
+
+    // Show customer photo if present.
+    const img = document.getElementById('cs-photo');
+    const nophoto = document.getElementById('cs-nophoto');
+    if (active.parcel_photo){
+      img.src = active.parcel_photo; img.style.display='block'; nophoto.style.display='none';
+    } else {
+      img.style.display='none'; nophoto.style.display='block';
+    }
+
+    // Preselect the claimed size.
+    document.querySelectorAll('.cs-opt').forEach(o=>{
+      const on = o.getAttribute('data-size')===active.parcel_size;
+      o.style.borderColor = on ? '#06C167' : '#eee';
+      o.classList.toggle('sel', on);
+    });
+    document.getElementById('cs-note').style.display='none';
+    document.getElementById('courier-size-overlay').style.display='flex';
+  } catch(e){ alert('Could not load delivery: '+(e.message||'error')); }
+}
+
+function csPickSize(el, size){
+  csSelectedSize = size;
+  document.querySelectorAll('.cs-opt').forEach(o=>{
+    const on = o===el;
+    o.style.borderColor = on ? '#06C167' : '#eee';
+    o.classList.toggle('sel', on);
+  });
+  const note = document.getElementById('cs-note');
+  if (size !== csClaimedSize){
+    note.textContent = '⚠ This differs from the customer\u2019s claim — the price will be recalculated.';
+    note.style.display='block';
+  } else {
+    note.style.display='none';
+  }
+}
+
+async function submitCourierSize(){
+  if (!csDeliveryId) return;
+  if (!navigator.onLine){
+    enqueueAction({ type:'confirmSize', id: csDeliveryId, size: csSelectedSize });
+    document.getElementById('courier-size-overlay').style.display='none';
+    alert('Offline — size confirmation saved and will sync when you reconnect.');
+    return;
+  }
+  try {
+    const { delivery } = await FlashRush.confirmSize(csDeliveryId, csSelectedSize);
+    document.getElementById('courier-size-overlay').style.display='none';
+    const adjusted = csSelectedSize !== csClaimedSize;
+    alert(adjusted
+      ? 'Size confirmed as '+csSelectedSize+'. Price updated to $'+delivery.total.toFixed(2)+'. Customer notified.'
+      : 'Size confirmed — matches the customer\u2019s claim.');
+  } catch(e){
+    const msg = (e.message||'').toLowerCase();
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed')){
+      enqueueAction({ type:'confirmSize', id: csDeliveryId, size: csSelectedSize });
+      document.getElementById('courier-size-overlay').style.display='none';
+      alert('Network issue — size confirmation saved and will sync when you reconnect.');
+    } else {
+      alert('Could not confirm size: '+(e.message||'error'));
+    }
+  }
+}
+
+// ===== OFFLINE ACTION QUEUE =====
+// Courier actions (status changes, size confirmations) are queued locally when
+// the network is unavailable, then retried automatically on reconnect. This keeps
+// a courier working through dead zones (basements, rural areas). Note: this works
+// while the app is open; full background sync needs a native app.
+const OFFLINE_QUEUE_KEY = 'flashrush_offline_queue';
+
+function loadQueue(){
+  try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveQueue(q){
+  try { localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); } catch {}
+  updateOfflineBadge(q.length);
+}
+function enqueueAction(action){
+  const q = loadQueue();
+  q.push({ ...action, queuedAt: Date.now() });
+  saveQueue(q);
+}
+
+function updateOfflineBadge(count){
+  let badge = document.getElementById('offline-badge');
+  if (!badge){
+    badge = document.createElement('div');
+    badge.id = 'offline-badge';
+    badge.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#e08a00;color:white;padding:8px 16px;border-radius:999px;font-size:12px;font-weight:600;z-index:2000;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none';
+    document.body.appendChild(badge);
+  }
+  if (count > 0){
+    badge.textContent = navigator.onLine
+      ? '\u21bb Syncing '+count+' pending update'+(count>1?'s':'')+'\u2026'
+      : '\u26a0 Offline \u2014 '+count+' update'+(count>1?'s':'')+' queued';
+    badge.style.background = navigator.onLine ? '#06C167' : '#e08a00';
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Try to flush queued actions. Called on reconnect and periodically.
+let flushing = false;
+async function flushQueue(){
+  if (flushing || !navigator.onLine || !hasClient() || !FlashRush.token) return;
+  let q = loadQueue();
+  if (!q.length) return;
+  flushing = true;
+  updateOfflineBadge(q.length);
+  const remaining = [];
+  for (const action of q){
+    try {
+      if (action.type === 'status'){
+        await FlashRush.setStatus(action.id, action.status, action.coords || null);
+      } else if (action.type === 'confirmSize'){
+        await FlashRush.confirmSize(action.id, action.size, action.reason);
+      } else if (action.type === 'location'){
+        await FlashRush.pingLocation(action.id, action.lat, action.lng);
+      }
+      // success — drop it
+    } catch(e){
+      // Only re-queue network errors; drop validation errors so we don't loop forever.
+      const msg = (e.message||'').toLowerCase();
+      const isNetwork = msg.includes('fetch') || msg.includes('network') || msg.includes('failed');
+      if (isNetwork) remaining.push(action);
+    }
+  }
+  saveQueue(remaining);
+  flushing = false;
+  if (remaining.length === 0){
+    if (typeof loadDriverJobs === 'function') loadDriverJobs();
+    if (typeof refreshDriverActionButton === 'function') refreshDriverActionButton();
+  }
+}
+
+window.addEventListener('online', () => { updateOfflineBadge(loadQueue().length); flushQueue(); });
+window.addEventListener('offline', () => { updateOfflineBadge(loadQueue().length); });
+setInterval(flushQueue, 15000);
+setTimeout(() => { updateOfflineBadge(loadQueue().length); flushQueue(); }, 2000);
+
+// ===== DRIVER: advance delivery through its lifecycle =====
+const DRIVER_NEXT = {
+  accepted:   { next: 'picked_up',  label: 'Mark picked up' },
+  picked_up:  { next: 'delivering', label: 'Start delivery' },
+  delivering: { next: 'delivered',  label: 'Mark delivered' },
+};
+
+// Haversine distance in meters between two lat/lng points.
+function metersBetween(lat1, lng1, lat2, lng2){
+  const R = 6371000;
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const GEOFENCE_METERS = 50;
+let geofenceDisabled = false;
+// Read the testing flag from server config.
+fetch('/api/config').then(r=>r.json()).then(c=>{ geofenceDisabled = !!c.geofenceDisabled; }).catch(()=>{});
+
+// Get the courier's current position once (promise).
+function getCourierPosition(){
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('Location not supported'));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+  });
+}
+
+async function driverAdvanceStatus(btn){
+  if (!hasClient() || !FlashRush.token){ alert('Sign in as a courier first.'); openLogin(); return; }
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const active = deliveries.find(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
+    if (!active){ alert('No active delivery to update.'); return; }
+    const step = DRIVER_NEXT[active.status];
+    if (!step){ alert('This delivery is already complete.'); return; }
+    let pos = null;
+
+    // Geofence: "picked up" requires being near pickup; "delivered" requires being near dropoff.
+    const needsGeofence = geofenceDisabled ? null : (
+      (step.next === 'picked_up') ? { lat: active.pickup_lat, lng: active.pickup_lng, what: 'pickup' } :
+      (step.next === 'delivered') ? { lat: active.dropoff_lat, lng: active.dropoff_lng, what: 'dropoff' } : null);
+
+    if (needsGeofence){
+      if (btn){ btn.disabled = true; const s=btn.querySelector('span'); if(s) s.textContent='Checking location…'; }
+      try { pos = await getCourierPosition(); }
+      catch(e){
+        alert('Location access is required to confirm '+needsGeofence.what+'. Please allow location and try again.');
+        if (btn) btn.disabled = false; refreshDriverActionButton(); return;
+      }
+      const dist = metersBetween(pos.lat, pos.lng, needsGeofence.lat, needsGeofence.lng);
+      if (dist > GEOFENCE_METERS){
+        alert('You must be within '+GEOFENCE_METERS+' meters of the '+needsGeofence.what+' to do this.\n\nYou are currently about '+Math.round(dist)+' m away.');
+        if (btn) btn.disabled = false; refreshDriverActionButton(); return;
+      }
+    } else {
+      if (btn){ btn.disabled = true; }
+    }
+
+    // For geofenced steps we already have pos; pass it so the server can verify too.
+    const coords = pos ? { lat: pos.lat, lng: pos.lng } : null;
+
+    // If offline, queue the action and update UI optimistically.
+    if (!navigator.onLine){
+      enqueueAction({ type:'status', id: active.id, status: step.next, coords });
+      alert('You appear to be offline. "'+step.next.replace('_',' ')+'" has been saved and will sync automatically when you reconnect.');
+      refreshDriverActionButton();
+      return;
+    }
+
+    let delivery;
+    try {
+      ({ delivery } = await FlashRush.setStatus(active.id, step.next, coords));
+    } catch(err){
+      const msg = (err.message||'').toLowerCase();
+      if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed')){
+        enqueueAction({ type:'status', id: active.id, status: step.next, coords });
+        alert('Network issue — "'+step.next.replace('_',' ')+'" saved and will sync when you reconnect.');
+        return;
+      }
+      throw err; // real error (e.g. geofence rejection from server)
+    }
+    if (delivery.status === 'delivered'){
+      alert('Delivery #'+delivery.id+' completed! Nice work.');
+    } else {
+      alert('Updated to: '+step.next.replace('_',' ')+'.');
+    }
+    loadDriverJobs();
+    refreshDriverActionButton();
+  } catch(e){
+    alert('Could not update: '+(e.message||'error'));
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// Update the driver action button label to reflect the current active delivery's stage.
+async function refreshDriverActionButton(){
+  const btn = document.getElementById('driver-action-btn');
+  if (!btn || !hasClient() || !FlashRush.token) return;
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const active = deliveries.find(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
+    const labelSpan = btn.querySelector('span');
+    if (!active){ if(labelSpan) labelSpan.textContent = 'No active delivery'; btn.style.opacity='0.5'; return; }
+    const step = DRIVER_NEXT[active.status];
+    if (step && labelSpan){ labelSpan.textContent = step.label; btn.style.opacity='1'; }
+  } catch(e){ /* leave default */ }
+}
+
 // ===== GOOGLE PLACES AUTOCOMPLETE for address entry =====
 let googleMapsReady = false;
 
@@ -2860,6 +3443,26 @@ function attachAutocomplete(inputId, onPick){
 // Kick off autocomplete setup after the page loads.
 setTimeout(initAddressAutocomplete, 500);
 
+// City-level autocomplete for the courier "area you cover" field.
+let cityAcAttached = false;
+function attachCityAutocomplete(){
+  if (cityAcAttached) return;
+  const input = document.getElementById('signup-coverage');
+  if (!input || !window.google?.maps?.places) return; // gracefully no-op if Maps not loaded
+  const ac = new google.maps.places.Autocomplete(input, {
+    types: ['(cities)'],
+    componentRestrictions: { country: 'us' },
+    fields: ['name', 'formatted_address'],
+  });
+  ac.addListener('place_changed', () => {
+    const place = ac.getPlace();
+    if (place && (place.name || place.formatted_address)){
+      input.value = place.formatted_address || place.name;
+    }
+  });
+  cityAcAttached = true;
+}
+
 // Show iOS "Add to Home Screen" hint only on iPhone Safari, not already installed.
 (function iosInstallHint(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -2904,7 +3507,9 @@ async function loadMyDeliveries(){
           + '<div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px">Parcel #'+d.id+'</div>'
           + '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:#000;margin-top:2px">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+(d.recipient_name||'Recipient')+'</div></div>'
           + '<div style="background:#06C167;border-radius:999px;padding:3px 9px;font-size:9px;font-weight:700;color:white">'+STATUS_LABEL[d.status].toUpperCase()+'</div></div>'
-          + '<div style="font-size:12px;color:#555;margin-top:4px">'+shortAddr(d.pickup_address)+' → '+shortAddr(d.dropoff_address)+' · '+d.miles+' mi · $'+d.total.toFixed(2)+'</div></div>'
+          + '<div style="font-size:12px;color:#555;margin-top:4px">'+shortAddr(d.pickup_address)+' → '+shortAddr(d.dropoff_address)+' · '+d.miles+' mi · $'+d.total.toFixed(2)+'</div>'
+          + (d.size_adjusted && d.price_difference ? '<div style="font-size:11px;color:#e08a00;margin-top:6px;background:#fff7e6;border-radius:8px;padding:6px 8px">⚠ Size adjusted by courier · '+(d.price_difference>0?'+':'')+'$'+d.price_difference.toFixed(2)+' (now $'+d.total.toFixed(2)+')'+(d.adjustment_reason?'<br><span style="color:#a06a00">'+d.adjustment_reason+'</span>':'')+'</div>' : '')
+          + '</div>'
           + '<div style="padding:10px 14px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'
           + '<button onclick="trackDelivery('+d.id+')" style="background:#f5f5f5;border:none;border-radius:9px;padding:8px;font-size:12px;font-weight:500;cursor:pointer">Track</button>'
           + '<button style="background:#f5f5f5;border:none;border-radius:9px;padding:8px;font-size:12px;font-weight:500;cursor:pointer">Contact</button>'
@@ -2919,14 +3524,66 @@ async function loadMyDeliveries(){
           + '<div><div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#000">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+(d.recipient_name||'Recipient')+'</div>'
           + '<div style="font-size:11px;color:#888;margin-top:2px">'+shortAddr(d.dropoff_address)+' · $'+d.total.toFixed(2)+' · '+STATUS_LABEL[d.status]+'</div></div>'
           + (d.rating?'<div style="font-size:12px;color:#FAC775">'+'★'.repeat(d.rating)+'</div>':'')
-          + '</div></div>';
+          + '</div>'
+          + (d.status==='delivered' && !d.rating ? '<div style="margin-top:10px"><div style="font-size:11px;color:#888;margin-bottom:5px">Rate this delivery:</div><div data-rate-for="'+d.id+'">'
+              + [1,2,3,4,5].map(n=>'<span onclick="rateDelivery('+d.id+','+n+')" style="font-size:22px;color:#ddd;cursor:pointer;margin-right:2px" class="rate-star">★</span>').join('')
+              + '</div></div>' : '')
+          + '</div>';
       }
     }
     live.innerHTML = html;
+    updateHomeLiveCard();
   } catch(e){ /* not logged in or network issue: leave sample visible */ }
 }
 
-// ===== LIVE TRACKING (customer) =====
+// Populate the customer home screen's live tracking card with the real latest active delivery.
+async function updateHomeLiveCard(){
+  const card = document.getElementById('home-live-card');
+  if (!card || !hasClient() || !FlashRush.token) return;
+  try {
+    const { deliveries } = await FlashRush.deliveries();
+    const active = deliveries
+      .filter(d => ['pending','accepted','picked_up','delivering'].includes(d.status))
+      .sort((a,b) => b.id - a.id)[0];
+    if (!active){
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+    const stageIdx = { pending:0, accepted:0, picked_up:1, delivering:1, delivered:2 }[active.status] || 0;
+    const bar = (on) => '<div style="flex:1;height:5px;background:'+(on?'#06C167':'#1a1a1a')+';border-radius:999px"></div>';
+    const statusLabel = STATUS_LABEL[active.status] || active.status;
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+      + '<div><div style="font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.5px">Parcel #'+active.id+'</div>'
+      + '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:white;margin-top:2px">To '+(active.recipient_name||'recipient')+' · '+shortAddr(active.dropoff_address)+'</div></div>'
+      + '<div style="background:#06C167;border-radius:999px;padding:4px 10px;font-size:9px;font-weight:700;color:white">'+statusLabel.toUpperCase()+'</div></div>'
+      + '<div style="font-size:12px;color:#888;margin-bottom:10px">'+(active.status==='pending'?'Waiting for a courier to accept':'Courier assigned')
+      + (active.size_adjusted && active.price_difference ? ' · <span style="color:#e08a00">size adjusted '+(active.price_difference>0?'+':'')+'$'+active.price_difference.toFixed(2)+'</span>' : '')+'</div>'
+      + '<div style="display:flex;gap:5px">'+bar(stageIdx>=0)+bar(stageIdx>=1)+bar(stageIdx>=2)+'</div>'
+      + '<div style="display:flex;justify-content:space-between;margin-top:5px">'
+      + '<span style="font-size:9px;color:'+(stageIdx>=0?'#06C167':'#444')+';font-weight:600">Picked up</span>'
+      + '<span style="font-size:9px;color:'+(stageIdx>=1?'#06C167':'#444')+';font-weight:600">In transit</span>'
+      + '<span style="font-size:9px;color:'+(stageIdx>=2?'#06C167':'#444')+';font-weight:600">Delivered</span></div>'
+      + '<button onclick="trackDelivery('+active.id+')" style="width:100%;margin-top:10px;background:rgba(255,255,255,.1);color:white;border:none;border-radius:9px;padding:9px;font-size:12px;font-weight:600;cursor:pointer">Track live</button>';
+  } catch(e){ /* leave as-is */ }
+}
+
+async function rateDelivery(id, stars){
+  if (!hasClient() || !FlashRush.token) return;
+  // Visually fill the stars immediately.
+  const container = document.querySelector('[data-rate-for="'+id+'"]');
+  if (container){
+    container.querySelectorAll('.rate-star').forEach((s, i) => {
+      s.style.color = i < stars ? '#FAC775' : '#ddd';
+      s.style.pointerEvents = 'none';
+    });
+  }
+  try {
+    await FlashRush.rate(id, stars);
+    setTimeout(loadMyDeliveries, 600);
+  } catch(e){ alert('Could not submit rating: '+(e.message||'error')); }
+}
 let trackMap = null, trackCourierMarker = null, trackSocket = null, trackData = null;
 
 async function trackDelivery(id){
@@ -2955,6 +3612,16 @@ async function trackDelivery(id){
       document.getElementById('track-courier-sub').textContent = 'Updated just now';
     } else if (event === 'status'){
       document.getElementById('track-status').textContent = STATUS_LABEL[payload.status]||payload.status;
+    } else if (event === 'size_confirmed'){
+      if (payload.adjusted){
+        const sizeLabel = { small:'Envelope', medium:'Small', large:'Large', xl:'XL' }[payload.size] || payload.size;
+        const diff = payload.priceDifference || 0;
+        const diffText = diff > 0 ? 'increased by $'+diff.toFixed(2) : (diff < 0 ? 'decreased by $'+Math.abs(diff).toFixed(2) : 'unchanged');
+        document.getElementById('track-status').textContent = 'Size adjusted to '+sizeLabel;
+        // Informational only — no approval requested.
+        const sub = document.getElementById('track-courier-sub');
+        if (sub) sub.textContent = 'Size now '+sizeLabel+' · price '+diffText+(payload.reason?' · '+payload.reason:'');
+      }
     }
   });
 }
@@ -3095,21 +3762,48 @@ async function loadDriverJobs(){
   const sample = document.getElementById('dph1-jobs-sample');
   try {
     const { deliveries } = await FlashRush.deliveries();
+    const mine = deliveries.filter(d => d.driver_id && ['accepted','picked_up','delivering'].includes(d.status));
     const pending = deliveries.filter(d => d.status === 'pending');
     if (sample) sample.style.display = 'none';
-    if (!pending.length){
-      box.innerHTML = '<div style="padding:20px 14px;text-align:center;color:#999;font-size:12px">No pending jobs right now.</div>';
-      return;
+
+    let html = '';
+
+    // Active jobs (assigned to this courier) with action buttons.
+    if (mine.length){
+      html += '<div style="font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:4px 14px 6px">Your active job</div>';
+      for (const d of mine){
+        const step = DRIVER_NEXT[d.status];
+        const stepLabel = step ? step.label : 'Complete';
+        html += '<div style="background:white;margin:0 12px 8px;border-radius:12px;border:2px solid #06C167;padding:12px 14px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+          + '<div><div style="font-size:13px;font-weight:600">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+(d.recipient_name||shortAddr(d.dropoff_address))+'</div>'
+          + '<div style="font-size:11px;color:#888;margin-top:1px">'+shortAddr(d.pickup_address)+' → '+shortAddr(d.dropoff_address)+' · '+d.miles+'mi</div></div>'
+          + '<div style="background:#06C167;border-radius:999px;padding:3px 9px;font-size:9px;font-weight:700;color:white">'+STATUS_LABEL[d.status].toUpperCase()+'</div></div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">'
+          + '<button onclick="toggleDriverLocation(this)" style="background:#06C167;color:white;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px"><i class="ti ti-navigation" style="font-size:13px"></i><span>Start sharing</span></button>'
+          + '<button onclick="openCourierSizeCheck()" style="background:#0f1117;color:white;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer">Confirm size</button>'
+          + '</div>'
+          + '<button onclick="driverAdvanceStatus(this)" style="width:100%;background:#000;color:white;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-circle-check" style="font-size:15px;color:#06C167"></i><span>'+stepLabel+'</span></button>'
+          + '</div>';
+      }
     }
-    box.innerHTML = pending.map(d => {
-      const icon = d.parcel_size==='small'||d.parcel_size==='medium' ? 'package' : (d.parcel_size==='xl'||d.parcel_size==='large'?'box':'mail');
-      return '<div style="background:white;margin:0 12px 6px;border-radius:12px;border:1px solid rgba(0,0,0,.06);padding:11px 14px;display:flex;align-items:center;gap:10px">'
-        + '<div style="width:38px;height:38px;border-radius:11px;background:#f6f6f6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-'+icon+'" style="font-size:18px;color:#333"></i></div>'
-        + '<div style="flex:1"><div style="font-size:13px;font-weight:500;color:#000">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+shortAddr(d.dropoff_address)+'</div>'
-        + '<div style="font-size:11px;color:#888;margin-top:1px">'+d.miles+'mi · pickup '+shortAddr(d.pickup_address)+'</div></div>'
-        + '<div style="text-align:right"><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:#000">$'+d.total.toFixed(2)+'</div>'
-        + '<button onclick="acceptJob('+d.id+')" style="background:#06C167;color:white;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:3px">Accept</button></div></div>';
-    }).join('');
+
+    // Pending jobs to accept.
+    html += '<div style="font-family:Syne,sans-serif;font-size:10px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;padding:4px 14px 6px">Nearby parcel jobs</div>';
+    if (!pending.length){
+      html += '<div style="padding:14px;text-align:center;color:#999;font-size:12px">No pending jobs right now.</div>';
+    } else {
+      html += pending.map(d => {
+        const icon = d.parcel_size==='small'||d.parcel_size==='medium' ? 'package' : (d.parcel_size==='xl'||d.parcel_size==='large'?'box':'mail');
+        return '<div style="background:white;margin:0 12px 6px;border-radius:12px;border:1px solid rgba(0,0,0,.06);padding:11px 14px;display:flex;align-items:center;gap:10px">'
+          + '<div style="width:38px;height:38px;border-radius:11px;background:#f6f6f6;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-'+icon+'" style="font-size:18px;color:#333"></i></div>'
+          + '<div style="flex:1"><div style="font-size:13px;font-weight:500;color:#000">'+(SIZE_LABEL[d.parcel_size]||'Parcel')+' → '+shortAddr(d.dropoff_address)+'</div>'
+          + '<div style="font-size:11px;color:#888;margin-top:1px">'+d.miles+'mi · pickup '+shortAddr(d.pickup_address)+'</div></div>'
+          + '<div style="text-align:right"><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:#000">$'+d.total.toFixed(2)+'</div>'
+          + '<button onclick="acceptJob('+d.id+')" style="background:#06C167;color:white;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:3px">Accept</button></div></div>';
+      }).join('');
+    }
+    box.innerHTML = html;
   } catch(e){ /* leave sample */ }
 }
 
@@ -3128,7 +3822,7 @@ switchApp = function(id){
   _origSwitchApp(id);
   if (id === 'c') loadMyDeliveries();
   if (id === 'a') loadAdminOrders();
-  if (id === 'd') loadDriverJobs();
+  if (id === 'd'){ loadDriverJobs(); refreshDriverActionButton(); }
 };
 const _origRefreshAuthBar = refreshAuthBar;
 refreshAuthBar = function(user){

@@ -8,7 +8,7 @@ const r = Router();
 // POST /api/auth/register
 r.post('/register', (req, res) => {
   const { role = 'customer', name, first_name, last_name, email, password, phone,
-          vehicle, plate, coverage_area } = req.body || {};
+          vehicle, plate, coverage_area, vehicle_model, vehicle_year } = req.body || {};
   // Allow either a combined `name` or first/last parts.
   const fullName = name || [first_name, last_name].filter(Boolean).join(' ').trim();
   if (!fullName || !email || !password) {
@@ -33,6 +33,7 @@ r.post('/register', (req, res) => {
       user_id: user.id, tier: 'Bronze', rating: 5.0, total_trips: 0,
       accept_rate: 100, on_time_rate: 100,
       vehicle: vehicle || null, plate: plate || null, coverage_area: coverage_area || null,
+      vehicle_model: vehicle_model || null, vehicle_year: vehicle_year || null,
       status: 'offline', lat: null, lng: null, payout_account: null,
     });
   } else {

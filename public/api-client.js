@@ -38,11 +38,14 @@
 
     // Courier
     quote(body) { return req('/deliveries/quote', { method: 'POST', body }); },     // public, no login needed
+    aiParcelSize(description) { return req('/ai/parcel-size', { method: 'POST', body: { description } }); },
+    aiVerifySize(image, claimedSize) { return req('/ai/verify-size', { method: 'POST', body: { image, claimedSize } }); },
     book(body) { return req('/deliveries', { method: 'POST', body }); },
     deliveries() { return req('/deliveries'); },
     delivery(id) { return req(`/deliveries/${id}`); },
     accept(id) { return req(`/deliveries/${id}/accept`, { method: 'POST' }); },
-    setStatus(id, status) { return req(`/deliveries/${id}/status`, { method: 'PATCH', body: { status } }); },
+    confirmSize(id, size, reason) { return req(`/deliveries/${id}/confirm-size`, { method: 'POST', body: { size, reason } }); },
+    setStatus(id, status, coords) { return req(`/deliveries/${id}/status`, { method: 'PATCH', body: { status, ...(coords||{}) } }); },
     pingLocation(id, lat, lng) { return req(`/deliveries/${id}/location`, { method: 'POST', body: { lat, lng } }); },
     rate(id, rating) { return req(`/deliveries/${id}/rate`, { method: 'POST', body: { rating } }); },
 
