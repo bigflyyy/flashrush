@@ -1410,7 +1410,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
   </div>
   <div class="btm-nav">
     <div class="ni" onclick="custNav('cph1',this)"><i class="ti ti-home"></i><span class="nl">Home</span></div>
-    <div class="ni" onclick="custNav('cph2',this)"><i class="ti ti-package"></i><span class="nl">Send</span></div>
     <div class="ni on" onclick="custNav('cph3',this)"><i class="ti ti-receipt"></i><span class="nl">Trips</span><div class="nd"></div></div>
     <div class="ni" onclick="custNav('cph4',this)"><i class="ti ti-tag"></i><span class="nl">Offers</span></div>
     <div class="ni" onclick="custNav('cph5',this)"><i class="ti ti-user"></i><span class="nl">Profile</span></div>
@@ -1499,7 +1498,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
   </div>
   <div class="btm-nav">
     <div class="ni" onclick="custNav('cph1',this)"><i class="ti ti-home"></i><span class="nl">Home</span></div>
-    <div class="ni" onclick="custNav('cph2',this)"><i class="ti ti-package"></i><span class="nl">Send</span></div>
     <div class="ni" onclick="custNav('cph3',this)"><i class="ti ti-receipt"></i><span class="nl">Trips</span></div>
     <div class="ni on" onclick="custNav('cph4',this)"><i class="ti ti-tag"></i><span class="nl">Offers</span><div class="nd"></div></div>
     <div class="ni" onclick="custNav('cph5',this)"><i class="ti ti-user"></i><span class="nl">Profile</span></div>
@@ -1613,7 +1611,6 @@ body{font-family:'DM Sans',sans-serif;background:#f0f0f0;padding:20px 16px;min-h
   </div>
   <div class="btm-nav">
     <div class="ni" onclick="custNav('cph1',this)"><i class="ti ti-home"></i><span class="nl">Home</span></div>
-    <div class="ni" onclick="custNav('cph2',this)"><i class="ti ti-package"></i><span class="nl">Send</span></div>
     <div class="ni" onclick="custNav('cph3',this)"><i class="ti ti-receipt"></i><span class="nl">Trips</span></div>
     <div class="ni" onclick="custNav('cph4',this)"><i class="ti ti-tag"></i><span class="nl">Offers</span></div>
     <div class="ni on" onclick="custNav('cph5',this)"><i class="ti ti-user"></i><span class="nl">Profile</span><div class="nd"></div></div>
@@ -2450,42 +2447,8 @@ function toggleDarkMode(toggle){
   const enabled = toggle.classList.contains('on');
   const phones = document.querySelectorAll('.phone');
   phones.forEach(ph => {
-    if(enabled){
-      ph.style.backgroundColor = '#1a1a1a';
-      ph.style.color = '#fff';
-      // Apply dark mode to pscreen elements
-      ph.querySelectorAll('.pscreen').forEach(ps => {
-        ps.style.backgroundColor = '#0f0f0f';
-        ps.style.color = '#fff';
-      });
-      // Apply to white cards
-      ph.querySelectorAll('[style*="background:white"]').forEach(el => {
-        el.style.backgroundColor = '#222 !important';
-        el.style.color = '#fff';
-      });
-      // Apply to input fields
-      ph.querySelectorAll('input, textarea').forEach(el => {
-        el.style.backgroundColor = '#222';
-        el.style.color = '#fff';
-        el.style.borderColor = '#444';
-      });
-    } else {
-      ph.style.backgroundColor = '';
-      ph.style.color = '';
-      ph.querySelectorAll('.pscreen').forEach(ps => {
-        ps.style.backgroundColor = '';
-        ps.style.color = '';
-      });
-      ph.querySelectorAll('[style*="background:white"]').forEach(el => {
-        el.style.backgroundColor = '';
-        el.style.color = '';
-      });
-      ph.querySelectorAll('input, textarea').forEach(el => {
-        el.style.backgroundColor = '';
-        el.style.color = '';
-        el.style.borderColor = '';
-      });
-    }
+    if(enabled) ph.style.backgroundColor = '#1a1a1a';
+    else ph.style.backgroundColor = '';
   });
   localStorage.setItem('darkMode', enabled ? 'true' : 'false');
 }
@@ -2496,28 +2459,12 @@ function sendNotificationAdmin(){
   if(!title || !msg){ alert('Please fill in both Title and Message fields.'); return; }
   alert('Notification sent to all users: "'+title+'". Notification feature coming soon.');
 }
-let adminOrderFilter = 'all';
-
 function filterOrders(status){
-  adminOrderFilter = status;
   const filters = document.querySelectorAll('[onclick^="filterOrders"]').parentElement?.querySelectorAll('button') || [];
   filters.forEach(b => {
     b.style.background = status === 'all' ? '#06C167' : (b.textContent.toLowerCase().includes(status) || status === 'all') ? '#06C167' : 'transparent';
     b.style.color = b.style.background === '#06C167' ? 'white' : '#666';
   });
-  // Actually filter the displayed orders
-  const tbody = document.getElementById('adm-live-rows');
-  if (tbody) {
-    const rows = tbody.querySelectorAll('[style*="display:flex"]');
-    rows.forEach(row => {
-      const statusEl = row.querySelectorAll('div')[2];
-      if (statusEl) {
-        const rowStatus = statusEl.textContent.trim().toLowerCase();
-        const show = status === 'all' || rowStatus.includes(status.toLowerCase());
-        row.style.display = show ? 'flex' : 'none';
-      }
-    });
-  }
 }
 let selectedSize = 'medium';
 function pickSize(el, size, isManual=true){
@@ -2889,18 +2836,15 @@ async function doSignup(){
 
 function doLogout(){
   if(hasClient()) FlashRush.logout();
-  // BUG #1, #10: Clear login form and all state
+  // BUG #1: Clear login form
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
+  // BUG #10: Reset all UI state
   selectedSize = 'medium';
   parcelPhotoData = null;
   parcelPhotoVerified = false;
   describeVerified = false;
-  describedSize = null;
   trackSocket = null;
-  csDeliveryId = null;
-  csSelectedSize = null;
-  csClaimedSize = null;
   if(document.querySelector('[class*="Sharing"]')) {
     document.querySelectorAll('button').forEach(b => {
       if(b.textContent.includes('Sharing')) b.textContent = 'Start sharing GPS';
@@ -2910,16 +2854,12 @@ function doLogout(){
   // Reset UI state
   signupStep = 1;
   signupRole = 'customer';
-  authMode = 'signin';
   renderAuthUI();
   switchApp('c');
-  // Hide login modal on logout
-  document.getElementById('login-modal').style.display='none';
 }
 
 function refreshAuthBar(user){
   currentUser = user;  // BUG #4: Store user for role checking
-  currentUser = user;  // Ensure currentUser is cleared when user is null
   const status = document.getElementById('auth-status');
   const action = document.getElementById('auth-action');
   if (user){
@@ -3885,47 +3825,8 @@ async function loadAdminOrders(){
 }
 
 // --- Driver: pending job queue ---
-async function loadDriverProfile(){
-  // BUG #2: Load actual driver profile data and update the driver home header
-  if (!hasClient() || !FlashRush.token) return;
-  try {
-    const { user, profile } = await FlashRush.me();
-    if (user.role !== 'driver' || !profile) return;
-    
-    // Update driver home profile header (dph1) with actual data
-    // Note: Database has tier, rating, total_trips - NOT daily_earnings
-    const todayBox = document.querySelector('#dph1 [style*="Today"]')?.parentElement;
-    const tripsBox = document.querySelector('#dph1 [style*="Trips"]')?.parentElement;
-    const ratingBox = document.querySelector('#dph1 [style*="Rating"]')?.parentElement;
-    const avatarBox = document.querySelector('#dph1 [style*="MK"]');
-    
-    // Update trips count (available in database)
-    if (tripsBox) {
-      const tripsEl = tripsBox.querySelector('div:nth-child(2)');
-      if (tripsEl) tripsEl.textContent = profile.total_trips || 0;
-    }
-    
-    // Update rating (available in database)
-    if (ratingBox) {
-      const ratingEl = ratingBox.querySelector('div:nth-child(2)');
-      if (ratingEl) ratingEl.textContent = (profile.rating || 5.0).toFixed(2);
-      const tierEl = ratingBox.querySelector('div:last-child');
-      if (tierEl) tierEl.textContent = '★ ' + (profile.tier || 'Bronze');
-    }
-    
-    // Update avatar
-    if (avatarBox) {
-      avatarBox.textContent = user.name.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase();
-    }
-    
-    // Note: Daily earnings not available in current schema - would need to be calculated from deliveries
-  } catch(e){ /* silent */ }
-}
-
 async function loadDriverJobs(){
   if (!hasClient() || !FlashRush.token) return;
-  // BUG #2: Also load and display actual driver profile data
-  loadDriverProfile();
   const box = document.getElementById('dph1-jobs');
   if (!box) return;
   const sample = document.getElementById('dph1-jobs-sample');
